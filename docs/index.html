@@ -260,6 +260,16 @@ const FEATURES = [
   {id:"promo", name:"내 프로그램 홍보", when:"프로그램 등록 후", needs:"설정 › 내 프로그램에 등록",
    desc:"글 주제가 등록한 키워드와 맞을 때만 글 하단에 내 프로그램 소개 한 줄을 넣어요 ('운영자가 직접 만든 프로그램' 표시 포함). 같은 프로그램은 티스토리·SNS 각각 주 1회까지.",
    opts:[{k:"interval_days", label:"같은 프로그램 재노출 간격 (일)", type:"number", min:1, max:60}]},
+  {id:"inbox", name:"소재함", when:"처음부터", needs:"없음",
+   desc:"평소 본 링크를 텔레그램 봇에 보내기만 하면(폰 공유 → 텔레그램) 소재함에 쌓여요. 그날 수집한 소식으로 못 채운 날 먼저 쓰고, 오래 기다린 소재는 정해진 날짜 안에 꼭 써요. 메모를 붙이면 글 방향에 반영돼요.",
+   opts:[{k:"wait_days", label:"이 날짜가 지나면 소식이 충분한 날에도 먼저 쓰기 (일)", type:"number", min:1, max:30}]},
+  {id:"link_page", name:"프로필 링크 페이지", when:"이미지 저장소 연결 후", needs:"ASSETS_REPO·ASSETS_TOKEN + 저장소 Pages(/docs)",
+   secrets:["ASSETS_REPO","ASSETS_TOKEN"],
+   desc:"인스타·스레드 프로필에 넣을 링크 하나. 오픈카톡 문의, 블로그, 내 프로그램, 최신 글을 한 페이지에 모아 새 글이 올라갈 때마다 자동으로 바꿔요. 버튼·문구는 설정 › 프로필 링크 페이지에서."},
+  {id:"ledger", name:"월간 손익 요약", when:"처음부터", needs:"없음",
+   desc:"텔레그램 /income 5만 제휴 쿠팡 · /lead 프로그램 엑셀 처럼 기록하면, Claude 비용·협찬 콘텐츠 수·프로그램 소개 노출과 합쳐 주간 리포트에 한 줄로, 매달 첫 주엔 지난달 정리로 보여줘요. 성과 탭에서도 볼 수 있어요.",
+   opts:[{k:"usd_krw", label:"달러 환율 (Claude 비용 원화 환산)", type:"number", min:500, max:3000},
+         {k:"fixed_costs_krw", label:"매달 고정 지출 (원, 도메인·툴 구독 등)", type:"number", min:0, max:10000000}]},
   {id:"approval_reminder", name:"승인 알림", when:"처음부터", needs:"없음",
    desc:"정해진 시각까지 승인 안 한 인스타 패키지가 있으면 텔레그램으로 한 번 알려줘요.",
    opts:[{k:"at", label:"알림 시각", type:"time"}]},
@@ -270,10 +280,10 @@ const FEATURES = [
    secrets:["THREADS_ACCESS_TOKEN","THREADS_USER_ID"],
    desc:"인스타 캐러셀이 게시되면 같은 이미지로 스레드에도 올려요. 글은 500자로 자동 축약돼요."},
   {id:"comment_dm", name:"댓글 → DM 자동 발송", when:"3~4주차~", needs:"인스타 토큰에 댓글·메시지 권한",
-   desc:"캡션에 '댓글에 자료 남기면 DM' 안내를 넣고, 키워드 댓글에 원문 링크를 DM + 공개 답글로 보내요. 댓글당 1번, 7일 이내만 가능해요.",
+   desc:"캡션에 '댓글에 자료 남기면 DM' 안내를 넣고, 키워드 댓글에 실무 키트(따라 하기·복붙 요청문·업무 활용·도입 전 체크리스트 — 게시물에 없던 내용) 페이지와 공식 원문을 DM으로, 공개 답글도 달아요. 키트는 첫 요청 때 원문 근거로 한 번만 만들어요. 댓글당 1번, 7일 이내만 가능해요.",
    opts:[{k:"keywords", label:"반응할 댓글 키워드", type:"chips"},
          {k:"caption_cta", label:"캡션 안내 문구", type:"textarea"},
-         {k:"message", label:"DM 내용", type:"textarea", help:"{title} = 게시물 제목, {source_url} = 공식 원문 링크"},
+         {k:"message", label:"DM 내용", type:"textarea", help:"{title} 제목 · {kit_contents} 키트 구성 · {guide_url} 실무 키트 페이지 · {source_url} 공식 원문 · {points} 카드 소제목 · {naver_url} 네이버 글 · {link_page} 링크 모음. 값이 없는 줄은 자동으로 빠져요"},
          {k:"public_reply", label:"공개 답글", type:"text"},
          {k:"max_per_run", label:"한 번에 최대 발송 수", type:"number", min:1, max:100}]},
   {id:"shorts_assist", name:"유튜브 쇼츠 보조", when:"릴스 반응 확인 후", needs:"유튜브 채널",
@@ -331,6 +341,10 @@ const CONFIG_SECTIONS = [
     {p:"sources.rss", label:"공식 RSS 피드", type:"objlist", cls:"c4",
      cols:[{k:"name",ph:"이름"},{k:"url",ph:"https://…/feed"},{k:"weight",ph:"가중치",num:true},{k:"type",ph:"official",sel:[["official","공식"],["github_trending","GitHub"],["producthunt","PH"]]}],
      template:{name:"",url:"",weight:1.0,type:"official"}},
+    {p:"sources.korean.enabled", label:"국내 기술 블로그 수집 (토스·카카오·네이버 D2 등)", type:"toggle", help:"사내 AI 도입·업무 자동화 사례처럼 독자가 가져갈 게 있는 글만 골라요"},
+    {p:"sources.korean.feeds", label:"국내 기술 블로그 피드", type:"objlist", cls:"c3",
+     cols:[{k:"name",ph:"이름"},{k:"weight",ph:"가중치",num:true},{k:"url",ph:"https://…/feed"}],
+     template:{name:"",url:"",weight:0.9}},
     {p:"sources.github_trending.enabled", label:"GitHub Trending 수집", type:"toggle"},
     {p:"sources.github_trending.languages", label:"GitHub 언어", type:"chips", help:"빈 값 = 전체. 예: python, typescript"},
     {p:"sources.producthunt.enabled", label:"Product Hunt 수집", type:"toggle"},
@@ -354,6 +368,17 @@ const CONFIG_SECTIONS = [
      cols:[{k:"name",ph:"이름 (예: 칼퇴 가계부)"},{k:"keywords",ph:"키워드, 쉼표로 (가계부, 엑셀)"},{k:"pitch",ph:"한 줄 소개"},{k:"link",ph:"링크 (비우면 오픈카톡 안내)"}],
      template:{name:"", keywords:"", pitch:"", link:""},
      help:"글 제목·도입부에 키워드가 있을 때만 소개가 들어가요. 소개 문구는 과장 없이 사실만 적어 주세요."},
+  ]],
+  ["linkpage","프로필 링크 페이지","인스타·스레드 프로필에 넣는 링크 하나 — 기능 스위치 › 프로필 링크 페이지",[
+    {p:"features.link_page.bio", label:"소개 한 줄", type:"text", help:"비우면 채널 소개 문구(tagline)"},
+    {p:"features.link_page.kakao_url", label:"오픈카톡 주소", type:"text", help:"비우면 수익화 › 문의 안내 안의 오픈카톡 주소를 써요"},
+    {p:"features.link_page.avatar_url", label:"프로필 이미지 주소", type:"text", help:"https:// 이미지 주소. 비우면 이름 첫 글자"},
+    {p:"features.link_page.posts", label:"최신 글 개수", type:"number", min:0, max:20},
+    {p:"features.link_page.show_programs", label:"내 프로그램(링크 있는 것) 보여주기", type:"toggle"},
+    {p:"features.link_page.links", label:"추가 버튼", type:"objlist", cls:"c3",
+     cols:[{k:"label",ph:"버튼 이름"},{k:"note",ph:"작은 설명 (제휴면 '제휴')"},{k:"url",ph:"https://…"}],
+     template:{label:"", note:"", url:""},
+     help:"설명에 '제휴'가 들어가면 페이지 아래에 제휴 안내가 붙어요. 바꾼 내용은 다음 일일 실행이나 티스토리 발행 때 반영돼요."},
   ]],
   ["claude","Claude","모델과 비용",[
     {p:"llm.writer_model", label:"본문 작성 모델", type:"model"},
@@ -538,8 +563,8 @@ async function save(extra = null, message = "settings: 대시보드에서 변경
       const eff2 = deepMerge(S.base, latest.data.config);
       for (const p of S.dirty) setPath(eff2, p, clone(getPath(S.draft, p)));
       if (extra) for (const [p, v] of Object.entries(extra)) setPath(eff2, p, v);
-      const data = {...latest.data, config: diff(S.base, eff2) || {},
-                    updated_at: new Date().toISOString().slice(0,19) + "Z", updated_by: "dashboard"};
+      const data = {...latest.data, config: diff(S.base, eff2) || {}};
+      delete data.updated_at; delete data.updated_by;
       try { await writeSettings(data, latest.sha, message); }
       catch (e) { if ((e.status === 409 || e.status === 422) && attempt === 0) continue; throw e; }
       S.settings = data; S.eff = eff2; S.draft = clone(eff2); S.dirty.clear(); updateSavebar();
@@ -655,6 +680,7 @@ function viewHome(){
   html += `</div>`;
 
   html += adsenseCard(h);
+  html += linkPageCard();
   const exp = h.expiry || {};
   const rows = [["인스타 토큰", exp.IG_ACCESS_TOKEN], ["이미지 저장소 토큰 (ASSETS_TOKEN)", exp.ASSETS_TOKEN], ["자동 갱신·명령 토큰 (GH_PAT)", exp.GH_PAT]];
   html += `<div class="card" style="margin-top:14px"><h3>만료 일정</h3><div class="list">` + rows.map(([n, v]) => { const d = dday(v);
@@ -837,6 +863,45 @@ function rerenderKeepScroll(focusPath){
 
 /* ================================================================ 대기열 */
 const TQ_LABEL = {queued:["발행 대기","acc"], published:["발행됨","good"], skipped:["발행 안 함",""], failed:["발행 실패","bad"]};
+function linkPageCard(){
+  if (!getPath(S.eff, "features.link_page.enabled")) return "";
+  const lp = S.state.link_page || (S.status.link_page || {});
+  if (!lp.url) return `<div class="card" style="margin-top:14px"><h3>🔗 프로필 링크 페이지</h3><p class="small muted" style="margin:0">이미지 저장소(ASSETS_REPO·ASSETS_TOKEN)가 연결돼 있으면 다음 일일 실행 때 만들어져요. 주소가 생기면 여기와 텔레그램으로 알려드려요.</p></div>`;
+  return `<div class="card" style="margin-top:14px"><div class="row between" style="gap:10px;flex-wrap:wrap"><div style="min-width:0;flex:1"><h3 style="margin-bottom:4px">🔗 프로필 링크 페이지</h3>
+    <div class="small" style="word-break:break-all"><a href="${esc(lp.url)}" target="_blank" rel="noopener">${esc(lp.url)}</a></div>
+    <div class="small muted" style="margin-top:4px">인스타·스레드 프로필 링크에 넣어 두세요 · 마지막 갱신 ${lp.at ? fmtKST(lp.at) : "–"}</div></div>
+    <div class="row" style="gap:8px"><button class="btn sm" data-act="copyReply" data-text="${esc(lp.url)}">주소 복사</button><a class="btn sm" href="#cfg-linkpage">버튼 편집</a></div></div></div>`;
+}
+function inboxCard(){
+  if (!getPath(S.eff, "features.inbox.enabled")) return "";
+  const box = S.state.inbox || [], wait = getPath(S.eff, "features.inbox.wait_days") || 3;
+  const TGT = {tistory:"티스토리", sns:"SNS"};
+  return `<div class="card" style="margin-bottom:14px"><h3>📥 소재함 <span class="muted small">${box.length}</span></h3>` +
+    (box.length ? `<div class="list">` + box.map((e, i) => `<div class="li"><div class="main"><div class="t" style="word-break:break-all"><a href="${esc(e.url)}" target="_blank" rel="noopener" style="color:var(--text)">${esc(e.url)}</a></div>
+      ${e.memo ? `<div class="small" style="color:var(--text2);margin-top:3px">“${esc(e.memo)}”</div>` : ""}
+      <div class="small muted" style="margin-top:3px">${i + 1}번 · ${ago(e.at)} 저장${TGT[e.target] ? ` · ${TGT[e.target]} 전용` : ""}${e.fails ? ` · 읽기 실패 ${e.fails}회` : ""}</div></div></div>`).join("") + `</div>` : `<div class="empty">비어 있어요.</div>`) +
+    `<p class="small muted" style="margin:10px 0 0">텔레그램 봇에 링크를 보내면 저장돼요 (폰: 공유 → 텔레그램 → 봇). 소식이 부족한 날 먼저 쓰고, ${wait}일 넘게 기다린 소재는 그날 SNS로 써요. 삭제는 텔레그램 <code>/save 삭제 번호</code>.</p></div>`;
+}
+function won(n){ return (n < 0 ? "-" : "") + "₩" + Math.abs(Math.round(n || 0)).toLocaleString(); }
+function ledgerCol(s, title){
+  const inc = Object.entries(s.income_by_cat || {}), lead = Object.entries(s.leads_by_cat || {});
+  return `<div><div class="small muted" style="margin-bottom:6px">${title} (${esc(s.month)})</div>
+    <div style="font-size:26px;font-weight:800;color:${s.net_krw < 0 ? "var(--bad)" : "var(--text)"}">${won(s.net_krw)}</div>
+    <div class="small" style="color:var(--text2);margin-top:6px;line-height:1.7">수익 ${won(s.income)}${inc.length ? ` <span class="muted">(${inc.map(([k, v]) => `${esc(k)} ${won(v)}`).join(" · ")})</span>` : ""}<br>
+    문의 ${s.leads}건${lead.length ? ` <span class="muted">(${lead.map(([k, v]) => `${esc(k)} ${v}`).join(" · ")})</span>` : ""} · 협찬 콘텐츠 ${s.sponsor_posts}건 · 프로그램 소개 ${s.promo_shown}회<br>
+    Claude $${(s.claude_usd || 0).toFixed(2)} ${s.within_credit ? `<span class="pill good">크레딧 안</span>` : `<span class="pill warn">초과 ${won(s.cash_cost_krw - (s.fixed_costs_krw || 0))}</span>`}${s.fixed_costs_krw ? ` · 고정비 ${won(s.fixed_costs_krw)}` : ""}</div></div>`;
+}
+function ledgerCard(){
+  if (!getPath(S.eff, "features.ledger.enabled")) return "";
+  const L = S.status.ledger;
+  const how = `<p class="small muted" style="margin:10px 0 0">기록: 텔레그램 <code>/income 5만 제휴 쿠팡</code> · <code>/lead 협찬 브랜드명</code> · 잘못 적으면 <code>/income 취소</code></p>`;
+  if (!L) return `<div class="card" style="margin-bottom:14px"><h3>💰 월간 손익</h3>${how}</div>`;
+  const ent = (L.month.entries || []).slice().reverse().slice(0, 6);
+  return `<div class="card" style="margin-bottom:14px"><h3>💰 월간 손익 <span class="small muted">순손익 = 수익 − 실지출(크레딧 초과분 + 고정비)</span></h3>
+    <div class="grid g2" style="gap:18px">${ledgerCol(L.month, "이번 달")}${ledgerCol(L.prev, "지난달")}</div>
+    ${ent.length ? `<div class="list" style="margin-top:12px">` + ent.map(e => `<div class="li"><span class="pill ${e.kind === "income" ? "good" : "acc"}">${e.kind === "income" ? esc(e.cat) : "문의 · " + esc(e.cat)}</span><div class="main"><div class="t">${e.kind === "income" ? won(e.amount) + " " : ""}${esc(e.memo || "")}</div><div class="small muted">${fmtKST(e.at)}</div></div></div>`).join("") + `</div>` : ""}
+    ${how}</div>`;
+}
 function tistoryQueueCard(){
   const q = S.status.tistory_queue || [];
   if (!q.length) return "";
@@ -851,7 +916,7 @@ function tistoryQueueCard(){
 }
 function viewQueue(){
   const packs = S.status.packs || [];
-  let html = `<h2>대기열</h2><p class="lead">승인·표지 선택·코멘트는 텔레그램에서 해요. 여기서는 발행 예정과 결과를 한눈에 봐요.</p>` + tistoryQueueCard();
+  let html = `<h2>대기열</h2><p class="lead">승인·표지 선택·코멘트는 텔레그램에서 해요. 여기서는 발행 예정과 결과를 한눈에 봐요.</p>` + tistoryQueueCard() + inboxCard();
   if (!packs.length) return html + `<div class="card empty">아직 만들어진 인스타 패키지가 없어요.</div>`;
   const groups = [["인스타 · 승인 대기", packs.filter(p => p.status === "pending")], ["인스타 · 예약됨", packs.filter(p => p.status === "approved")],
                   ["인스타 · 지난 게시물", packs.filter(p => !["pending","approved"].includes(p.status))]];
@@ -882,6 +947,7 @@ function postRows(){
 function viewStats(){
   const posts = postRows(), fol = (S.insights.followers || []).slice().sort((a, b) => a.at.localeCompare(b.at));
   let html = `<h2>성과</h2><p class="lead">매주 월요일 주간 리포트가 인스타 통계를 모아요. 티스토리·네이버는 통계 API가 없어 각 관리 화면에서 확인해 주세요.</p>`;
+  html += ledgerCard();
   if (!posts.length && !fol.length) return html + `<div class="card empty">아직 통계가 없어요. 인스타 게시 후 첫 주간 리포트(월요일 09:10)부터 채워져요.</div>`;
   const recent = posts.filter(p => Date.now() - new Date(p.at) < 30 * 86400000);
   const avg = k => recent.length ? Math.round(recent.reduce((s, p) => s + (p.m[k] || 0), 0) / recent.length) : 0;
