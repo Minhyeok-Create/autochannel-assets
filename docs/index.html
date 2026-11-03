@@ -55,7 +55,7 @@ h3{font-size:16px;margin:0 0 10px;letter-spacing:-.01em}
 .pill{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;background:var(--surface2);color:var(--text2);white-space:nowrap}
 .pill.good{color:var(--good);background:rgba(126,224,129,.1)} .pill.warn{color:var(--warn);background:rgba(255,194,75,.1)}
 .pill.bad{color:var(--bad);background:rgba(255,107,107,.1)} .pill.acc{color:var(--accent);background:var(--accent-dim)}
-.btn{border:none;border-radius:10px;padding:10px 16px;font-weight:700;background:var(--surface2);color:var(--text)}
+.btn{border:none;border-radius:10px;padding:10px 16px;font-weight:700;background:var(--surface2);color:var(--text);white-space:nowrap;flex:none}
 .btn:hover{filter:brightness(1.15)} .btn:disabled{opacity:.45;cursor:not-allowed}
 .btn.primary{background:var(--accent);color:var(--accent-ink)}
 .btn.ghost{background:none;border:1px solid var(--line);color:var(--text2)}
@@ -203,7 +203,8 @@ h3{font-size:16px;margin:0 0 10px;letter-spacing:-.01em}
         <a href="#home" data-v="home">홈</a>
         <a href="#features" data-v="features">기능 스위치</a>
         <a href="#config" data-v="config">설정</a>
-        <a href="#queue" data-v="queue">인스타 대기열</a>
+        <a href="#queue" data-v="queue">대기열</a>
+        <a href="#reply" data-v="reply">댓글</a>
         <a href="#stats" data-v="stats">성과</a>
         <a href="#run" data-v="run">실행</a>
       </nav>
@@ -230,9 +231,9 @@ const API = "https://api.github.com";
 const FORMAT_LABEL = {explainer:"뉴스 해설", spotlight:"툴 소개", roundup:"모음"};
 const DAYS = ["월","화","수","목","금","토","일"];
 const STATUS_LABEL = {pending:["승인 대기","warn"], approved:["예약됨","acc"], done:["게시 완료","good"], skipped:["건너뜀",""], expired:["만료",""]};
-const TARGET_LABEL = {carousel:"캐러셀", reel:"릴스"};
-const RESULT_LABEL = {sent:"텔레그램 전송", rejected:"검수 보류 (자동 발행 안 함)", fallback:"자동 발행 실패 · 수동 발행 필요", dry:"시험 실행", pack:"텔레그램 전송 · 인스타 승인 대기", "sent-with-warnings":"텔레그램 전송 (검수 경고 있음)"};
-const WF_LABEL = {"daily.yml":"일일 생성","approve.yml":"승인 처리","weekly.yml":"주간 리포트","refresh-ig-token.yml":"토큰 갱신","deploy-dashboard.yml":"대시보드 배포"};
+const TARGET_LABEL = {carousel:"캐러셀", reel:"릴스", reels:"릴스"};
+const RESULT_LABEL = {queued:"발행 대기 · 💬 코멘트 받는 중", skipped:"발행 안 함", sent:"텔레그램 전송", rejected:"검수 보류 (자동 발행 안 함)", fallback:"자동 발행 실패 · 수동 발행 필요", dry:"시험 실행", pack:"텔레그램 전송 · 인스타 승인 대기", "sent-with-warnings":"텔레그램 전송 (검수 경고 있음)"};
+const WF_LABEL = {"daily.yml":"일일 생성","approve.yml":"승인 처리","weekly.yml":"주간 리포트","refresh-ig-token.yml":"토큰 갱신","deploy-dashboard.yml":"대시보드 배포","tistory-publish.yml":"티스토리 발행","reply-suggest.yml":"답글 추천"};
 
 const REQUIRED_SECRETS = [
   ["ANTHROPIC_API_KEY","Claude API 키"],["TELEGRAM_BOT_TOKEN","텔레그램 봇 토큰"],["TELEGRAM_CHAT_ID","텔레그램 채팅 ID"],
@@ -240,6 +241,15 @@ const REQUIRED_SECRETS = [
 const INSTA_SECRETS = [["IG_ACCESS_TOKEN","인스타 토큰"],["IG_USER_ID","인스타 사용자 ID"],["ASSETS_REPO","이미지 저장소"],["ASSETS_TOKEN","이미지 저장소 토큰"],["GH_PAT","자동 갱신·명령용 토큰"]];
 
 const FEATURES = [
+  {id:"dev_comment", name:"개발자 코멘트 한 줄", when:"처음부터", needs:"없음",
+   desc:"텔레그램 메시지에 답장으로 한 줄 의견을 보내면 티스토리·네이버·인스타 글에 '개발자 코멘트'로 들어가요. 티스토리는 마감 시각까지 기다렸다가 발행해요 (코멘트 없으면 그대로 발행).",
+   opts:[{k:"deadline", label:"티스토리 코멘트 마감 (이후 11:40·15:40 발행)", type:"time"},
+         {k:"label", label:"글에 표시할 제목", type:"text"}]},
+  {id:"reply_assist", name:"댓글 답글 추천", when:"처음부터", needs:"인스타 자동 답글은 인스타 토큰·댓글 권한",
+   desc:"네이버·티스토리 댓글은 '댓글' 탭이나 텔레그램 /reply 로 붙여넣으면 추천 답글 3개를 줘요. 인스타는 새 댓글마다 추천 답글이 텔레그램으로 오고 버튼을 누르면 바로 달려요.",
+   opts:[{k:"style", label:"답글 스타일 (모든 추천에 적용)", type:"textarea"},
+         {k:"instagram", label:"인스타 새 댓글 자동 확인", type:"toggle"},
+         {k:"max_per_run", label:"인스타 한 번에 최대 추천 수", type:"number", min:1, max:30}]},
   {id:"approval_reminder", name:"승인 알림", when:"처음부터", needs:"없음",
    desc:"정해진 시각까지 승인 안 한 인스타 패키지가 있으면 텔레그램으로 한 번 알려줘요.",
    opts:[{k:"at", label:"알림 시각", type:"time"}]},
@@ -534,7 +544,7 @@ async function dispatch(workflow, inputs = {}){
 }
 
 /* ================================================================ 라우팅 */
-const VIEWS = {home:viewHome, features:viewFeatures, config:viewConfig, queue:viewQueue, stats:viewStats, run:viewRun};
+const VIEWS = {home:viewHome, features:viewFeatures, config:viewConfig, queue:viewQueue, reply:viewReply, stats:viewStats, run:viewRun};
 function route(){
   const h = location.hash.slice(1);
   S.view = VIEWS[h] ? h : (h.startsWith("cfg-") ? "config" : "home");
@@ -546,6 +556,7 @@ function render(){
   $("#view").innerHTML = VIEWS[S.view]();
   bindFields();
   if (S.view === "stats") drawCharts();
+  if (S.view === "reply") loadRecentReplies();
   const h = location.hash.slice(1);
   if (h.startsWith("cfg-")) { const el = document.getElementById(h); if (el) el.scrollIntoView({block:"start"}); }
   updateSavebar();
@@ -759,12 +770,25 @@ function rerenderKeepScroll(focusPath){
 }
 
 /* ================================================================ 대기열 */
+const TQ_LABEL = {queued:["발행 대기","acc"], published:["발행됨","good"], skipped:["발행 안 함",""], failed:["발행 실패","bad"]};
+function tistoryQueueCard(){
+  const q = S.status.tistory_queue || [];
+  if (!q.length) return "";
+  return `<div class="card" style="margin-bottom:14px"><h3>티스토리 발행 <span class="muted small">${q.length}</span></h3><div class="list">` + q.map(d => {
+    const [l, c] = TQ_LABEL[d.status] || [d.status, ""];
+    return `<div class="li"><div class="main"><div class="t">${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener" style="color:var(--text)">${esc(d.title)} ↗</a>` : esc(d.title)}</div>
+      <div class="row" style="flex-wrap:wrap;gap:6px;margin-top:5px"><span class="pill ${c}">${l}</span><span class="pill">${esc(d.visibility)}</span>${d.comment ? `<span class="pill acc">💬 코멘트</span>` : ""}</div>
+      <div class="small muted" style="margin-top:5px">${d.status === "queued" ? `${fmtKST(d.publish_at)} 이후 발행 · 텔레그램 메시지에 답장하면 코멘트가 들어가요` : `생성 ${fmtKST(d.created_at)}`}</div>
+      ${d.comment ? `<div class="small" style="margin-top:4px;color:var(--text2)">“${esc(d.comment)}”</div>` : ""}
+      ${d.error ? `<div class="small" style="color:var(--bad);margin-top:4px">${esc(d.error)}</div>` : ""}</div></div>`;
+  }).join("") + `</div></div>`;
+}
 function viewQueue(){
   const packs = S.status.packs || [];
-  let html = `<h2>인스타 대기열</h2><p class="lead">승인·표지 선택·캡션 수정은 텔레그램에서 해요. 여기서는 예약과 게시 결과를 한눈에 봐요.</p>`;
+  let html = `<h2>대기열</h2><p class="lead">승인·표지 선택·코멘트는 텔레그램에서 해요. 여기서는 발행 예정과 결과를 한눈에 봐요.</p>` + tistoryQueueCard();
   if (!packs.length) return html + `<div class="card empty">아직 만들어진 인스타 패키지가 없어요.</div>`;
-  const groups = [["승인 대기", packs.filter(p => p.status === "pending")], ["예약됨", packs.filter(p => p.status === "approved")],
-                  ["지난 게시물", packs.filter(p => !["pending","approved"].includes(p.status))]];
+  const groups = [["인스타 · 승인 대기", packs.filter(p => p.status === "pending")], ["인스타 · 예약됨", packs.filter(p => p.status === "approved")],
+                  ["인스타 · 지난 게시물", packs.filter(p => !["pending","approved"].includes(p.status))]];
   for (const [title, list] of groups) {
     if (!list.length) continue;
     html += `<div class="card" style="margin-bottom:14px"><h3>${title} <span class="muted small">${list.length}</span></h3><div class="list">` + list.map(p => {
@@ -874,6 +898,79 @@ function bindChartHover(box){
   });
 }
 
+/* ================================================================ 댓글 답글 도우미 */
+const PLATFORMS = [["naver","네이버 블로그"],["tistory","티스토리"],["instagram","인스타그램"],["etc","기타"]];
+const R = {busy:false, result:null, recent:[], form:{platform:"naver", title:"", comment:"", tg:true}};
+function recentTitles(){
+  const seen = new Set(), out = [];
+  (S.state.history || []).slice().reverse().forEach(h => { if (h.title && !seen.has(h.title)) { seen.add(h.title); out.push(h.title); } });
+  return out.slice(0, 15);
+}
+function replyCards(res){
+  if (!res) return "";
+  if (res.ok === false) return `<div class="card" style="border-color:var(--bad)"><b>추천 실패</b><div class="small muted">${esc(res.error || "")}</div></div>`;
+  if (res.skip) return `<div class="card" style="border-color:var(--warn)"><b>🚫 답글 생략 권장</b><div class="small muted">${esc(res.reason || "광고·스팸으로 보여요")}</div></div>`;
+  return `<div class="grid">` + (res.replies || []).map((r, i) => `<div class="card row between" style="align-items:flex-start;gap:14px">
+      <div><span class="pill acc">${i + 1}</span> <span style="margin-left:6px">${esc(r)}</span></div>
+      <button class="btn sm" data-act="copyReply" data-text="${esc(r)}">복사</button></div>`).join("") + `</div>`;
+}
+function viewReply(){
+  const style = getPath(S.eff, "features.reply_assist.style") || "";
+  const f = R.form;
+  return `<h2>댓글 답글 도우미</h2><p class="lead">받은 댓글을 붙여넣으면 추천 답글 3개를 만들어요 (보통 1분 안팎). 네이버·티스토리는 자동으로 달면 매크로로 보일 수 있어 복사해서 직접 달아 주세요. 인스타 댓글은 텔레그램 버튼으로 바로 달 수 있어요.</p>
+  <div class="grid g2">
+    <div class="card">
+      <div class="field" style="margin-top:0"><label for="rpPlat">플랫폼</label><select id="rpPlat">${PLATFORMS.map(([k, t]) => `<option value="${k}" ${f.platform === k ? "selected" : ""}>${t}</option>`).join("")}</select></div>
+      <div class="field"><label for="rpTitle">어느 글의 댓글인가요? (선택)</label><input id="rpTitle" list="rpTitles" value="${esc(f.title)}" placeholder="게시물 제목"><datalist id="rpTitles">${recentTitles().map(t => `<option value="${esc(t)}">`).join("")}</datalist></div>
+      <div class="field"><label for="rpComment">받은 댓글</label><textarea id="rpComment" placeholder="댓글을 그대로 붙여넣기" style="min-height:110px">${esc(f.comment)}</textarea></div>
+      <div class="field inline"><label for="rpTg" style="font-weight:500;font-size:14px">텔레그램으로도 받기</label><label class="switch"><input id="rpTg" type="checkbox" ${f.tg ? "checked" : ""}><span></span></label></div>
+      <button class="btn primary" style="width:100%;margin-top:16px" data-act="suggestReply" ${R.busy ? "disabled" : ""}>${R.busy ? '<span class="spin"></span> 만드는 중… (1분 안팎)' : "추천 답글 받기"}</button>
+      <div class="small muted" style="margin-top:10px">답글 스타일: ${esc(style)} <a href="#features">바꾸기</a></div>
+    </div>
+    <div id="rpResult">${R.result ? replyCards(R.result) : `<div class="card empty">추천 답글이 여기에 나와요</div>`}</div>
+  </div>
+  <div class="card" style="margin-top:14px"><h3>최근 추천</h3><div id="rpRecent"><div class="empty"><span class="spin"></span></div></div></div>`;
+}
+async function loadRecentReplies(){
+  const box = document.getElementById("rpRecent"); if (!box) return;
+  try {
+    const list = await gh(repoPath(`/contents/data/replies?ref=${encodeURIComponent(S.info.default_branch)}`), {allow404:true}) || [];
+    const names = list.filter(x => x.name.endsWith(".json")).map(x => x.name).sort().reverse().slice(0, 5);
+    const items = (await Promise.all(names.map(n => readFile(`data/replies/${n}`, {json:true})))).filter(Boolean);
+    R.recent = items;
+    if (!document.getElementById("rpRecent")) return;
+    document.getElementById("rpRecent").innerHTML = items.length ? `<div class="list">` + items.map(it => `<div class="li"><div class="main">
+        <div class="small muted">${fmtKST(it.at)} · ${esc((PLATFORMS.find(p => p[0] === it.platform) || [0, it.platform])[1])}${it.post_title ? " · " + esc(it.post_title) : ""}</div>
+        <div class="t" style="font-weight:500">“${esc(it.comment)}”</div>
+        ${it.skip ? `<div class="small" style="color:var(--warn)">🚫 답글 생략 권장: ${esc(it.reason)}</div>` : (it.replies || []).map(r => `<div class="row" style="margin-top:6px;gap:8px"><span class="small" style="flex:1;color:var(--text2)">${esc(r)}</span><button class="btn ghost sm" data-act="copyReply" data-text="${esc(r)}">복사</button></div>`).join("")}
+      </div></div>`).join("") + `</div>` : `<div class="empty">아직 없어요</div>`;
+  } catch (e) { box.innerHTML = `<div class="empty">${esc(explain(e))}</div>`; }
+}
+async function suggestReply(){
+  const f = R.form;
+  f.platform = $("#rpPlat").value; f.title = $("#rpTitle").value.trim(); f.comment = $("#rpComment").value.trim(); f.tg = $("#rpTg").checked;
+  if (!f.comment) return toast("댓글 내용을 붙여넣어 주세요", true);
+  const id = "r" + new Date().toISOString().replace(/\D/g, "").slice(0, 14) + Math.random().toString(36).slice(2, 6);
+  R.busy = true; R.result = null; render();
+  try {
+    await gh(repoPath("/actions/workflows/reply-suggest.yml/dispatches"), {method:"POST", body:{ref:S.info.default_branch,
+      inputs:{request_id:id, platform:f.platform, comment:f.comment.slice(0, 1000), post_title:f.title.slice(0, 200), style:"", telegram: f.tg ? "true" : "false"}}});
+  } catch (e) {
+    R.busy = false; render();
+    return toast(e.status === 404 ? "Reply Suggest 워크플로를 찾을 수 없어요 (코드 업데이트 후 사용 가능)" : explain(e), true);
+  }
+  const started = Date.now();
+  while (Date.now() - started < 180000) {
+    await new Promise(r => setTimeout(r, 4000));
+    const res = await readFile(`data/replies/${id}.json`, {json:true}).catch(() => null);
+    if (res) { R.result = res; break; }
+  }
+  R.busy = false;
+  if (!R.result) toast("아직 결과가 없어요. Actions 탭에서 Reply Suggest 실행을 확인해 주세요", true);
+  else { f.comment = ""; toast(R.result.ok === false ? "추천에 실패했어요" : "추천 답글이 도착했어요"); }
+  if (S.view === "reply") render();
+}
+
 /* ================================================================ 실행 */
 function viewRun(){
   const paused = getPath(S.eff, "control.paused_until"), pausedOn = paused && new Date(paused) > new Date();
@@ -918,6 +1015,8 @@ const RUN_ACTIONS = {
     if (!/^https?:\/\//.test(u) || !b) return toast("제품 링크와 브랜드명을 모두 입력해 주세요", true);
     dispatch("daily.yml", {only:"sns", format:"", dry_run:"false", topic_url:u, sponsor_brand:b}); },
   runApprove: () => dispatch("approve.yml"),
+  suggestReply: () => suggestReply(),
+  copyReply: async t => { try { await navigator.clipboard.writeText(t.dataset.text); toast("복사했어요 · 붙여넣기만 하세요"); } catch { toast("복사가 막혔어요. 길게 눌러 직접 복사해 주세요", true); } },
   runWeekly: () => dispatch("weekly.yml"),
   pause: () => doPause(+$("#pDays").value),
 };
