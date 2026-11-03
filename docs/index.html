@@ -104,7 +104,7 @@ h3{font-size:16px;margin:0 0 10px;letter-spacing:-.01em}
 .tbl td{padding:9px 6px;border-bottom:1px solid var(--line);vertical-align:top}
 .tbl td.num,.tbl th.num{text-align:right;font-variant-numeric:tabular-nums}
 .objrow{display:grid;gap:8px;grid-template-columns:1fr;padding:12px;border:1px solid var(--line);border-radius:12px;margin-top:8px;background:var(--bg)}
-@media(min-width:760px){.objrow.c3{grid-template-columns:1fr 1.3fr 2fr auto}.objrow.c4{grid-template-columns:1.2fr 2.4fr .6fr .9fr auto}}
+@media(min-width:760px){.objrow.c3{grid-template-columns:1fr 1.3fr 2fr auto}.objrow.c4{grid-template-columns:1.2fr 2.4fr .6fr .9fr auto}.objrow.c4p{grid-template-columns:1fr 1.2fr 2fr 1.4fr auto}.objrow.c2n{grid-template-columns:3fr 1fr auto}}
 .objrow input,.objrow select{background:var(--surface)}
 .week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
 .week div{text-align:center;font-size:12.5px;color:var(--text2)}
@@ -250,6 +250,16 @@ const FEATURES = [
    opts:[{k:"style", label:"답글 스타일 (모든 추천에 적용)", type:"textarea"},
          {k:"instagram", label:"인스타 새 댓글 자동 확인", type:"toggle"},
          {k:"max_per_run", label:"인스타 한 번에 최대 추천 수", type:"number", min:1, max:30}]},
+  {id:"style_notes", name:"운영 메모 반영", when:"처음부터", needs:"없음",
+   desc:"텔레그램 /note 나 설정 › 운영 메모에 남긴 선호(말투, 구성, 빼고 싶은 주제)를 이후 모든 글 생성에 반영해요. 사실·출처 규칙보다 우선하지는 않아요."},
+  {id:"adsense_helper", name:"애드센스 준비 도우미", when:"처음부터", needs:"없음",
+   desc:"티스토리 공개 글 수·글 길이·필수 페이지를 확인해 홈에 '신청 가능 시점'을 보여주고, 조건을 다 채우면 텔레그램으로 알려줘요. 소개·개인정보처리방침 초안도 홈에서 복사할 수 있어요.",
+   opts:[{k:"target_posts", label:"목표 공개 글 수", type:"number", min:5, max:100},
+         {k:"min_chars", label:"글당 최소 글자 수 (공백 제외)", type:"number", min:500, max:5000},
+         {k:"pages_done", label:"소개·개인정보처리방침 페이지를 만들었어요", type:"toggle"}]},
+  {id:"promo", name:"내 프로그램 홍보", when:"프로그램 등록 후", needs:"설정 › 내 프로그램에 등록",
+   desc:"글 주제가 등록한 키워드와 맞을 때만 글 하단에 내 프로그램 소개 한 줄을 넣어요 ('운영자가 직접 만든 프로그램' 표시 포함). 같은 프로그램은 티스토리·SNS 각각 주 1회까지.",
+   opts:[{k:"interval_days", label:"같은 프로그램 재노출 간격 (일)", type:"number", min:1, max:60}]},
   {id:"approval_reminder", name:"승인 알림", when:"처음부터", needs:"없음",
    desc:"정해진 시각까지 승인 안 한 인스타 패키지가 있으면 텔레그램으로 한 번 알려줘요.",
    opts:[{k:"at", label:"알림 시각", type:"time"}]},
@@ -332,6 +342,18 @@ const CONFIG_SECTIONS = [
     {p:"telegram.public_channel", label:"구독자용 공개 텔레그램 채널", type:"text", help:"예: @kaltoelab_news (비우면 발송 안 함)"},
     {p:"image_host.github_repo", label:"카드 이미지 저장소", type:"text", help:"비우면 Secrets의 ASSETS_REPO 사용"},
     {p:"dashboard.url", label:"이 대시보드 주소", type:"text", help:"텔레그램 /status 에 링크로 표시"},
+  ]],
+  ["notes","운영 메모","앞으로 모든 글에 반영할 선호 — 텔레그램 /note 로 남긴 것도 여기 보여요",[
+    {p:"style_notes", label:"메모", type:"objlist", cls:"c2n",
+     cols:[{k:"text",ph:"예: 소제목은 질문형으로 / 코인·주식 주제는 빼기"},{k:"scope",sel:[["all","전체"],["topic","주제 선정"],["tistory","티스토리"],["naver","네이버"],["insta","인스타"]]}],
+     template:{text:"", scope:"all"},
+     help:"톤·구성·주제 선호만 적어 주세요. 사실 확인·출처 표기 규칙은 메모보다 항상 우선해요."},
+  ]],
+  ["promo","내 프로그램","기능 스위치 › 내 프로그램 홍보를 켜야 글에 들어가요",[
+    {p:"features.promo.programs", label:"프로그램", type:"objlist", cls:"c4p",
+     cols:[{k:"name",ph:"이름 (예: 칼퇴 가계부)"},{k:"keywords",ph:"키워드, 쉼표로 (가계부, 엑셀)"},{k:"pitch",ph:"한 줄 소개"},{k:"link",ph:"링크 (비우면 오픈카톡 안내)"}],
+     template:{name:"", keywords:"", pitch:"", link:""},
+     help:"글 제목·도입부에 키워드가 있을 때만 소개가 들어가요. 소개 문구는 과장 없이 사실만 적어 주세요."},
   ]],
   ["claude","Claude","모델과 비용",[
     {p:"llm.writer_model", label:"본문 작성 모델", type:"model"},
@@ -632,6 +654,7 @@ function viewHome(){
     }).join("") + `</div>` : `<div class="empty">아직 실행 기록이 없어요.</div>`}</div>`;
   html += `</div>`;
 
+  html += adsenseCard(h);
   const exp = h.expiry || {};
   const rows = [["인스타 토큰", exp.IG_ACCESS_TOKEN], ["이미지 저장소 토큰 (ASSETS_TOKEN)", exp.ASSETS_TOKEN], ["자동 갱신·명령 토큰 (GH_PAT)", exp.GH_PAT]];
   html += `<div class="card" style="margin-top:14px"><h3>만료 일정</h3><div class="list">` + rows.map(([n, v]) => { const d = dday(v);
@@ -639,6 +662,49 @@ function viewHome(){
     `<div class="li"><div class="main">티스토리 로그인 세션</div><span class="pill">${h.tistory_saved_at ? `저장 후 ${Math.floor((Date.now() - new Date(h.tistory_saved_at)) / 86400000)}일` : "확인 불가"}</span></div>` +
     `</div><p class="small muted" style="margin:10px 0 0">${h.at ? `기준: ${fmtKST(h.at)} 실행.` : "일일 실행 후 표시돼요."} 만료되면 텔레그램으로도 알려드려요.</p></div>`;
   return html;
+}
+
+/* ---------------- 애드센스 준비 카드 */
+function adsenseCard(h){
+  if (!getPath(S.eff, "features.adsense_helper.enabled")) return "";
+  const a = h.adsense || {}, o = getPath(S.eff, "features.adsense_helper") || {};
+  const target = o.target_posts || a.target || 20, total = a.total || 0, minc = o.min_chars || a.min_chars || 1500;
+  const isPublic = getPath(S.eff, "tistory.visibility") === "public", pages = !!o.pages_done;
+  const steps = [];
+  if (total < target) steps.push(`티스토리 글 ${target - total}개 더 쌓기`);
+  if (!isPublic) steps.push("티스토리 공개 전환 + 그동안 비공개로 올린 글도 공개로 바꾸기 (심사자는 공개 글만 봐요)");
+  if (a.short) steps.push(`${minc.toLocaleString()}자 미만 글 ${a.short}개 보강하기`);
+  if (!pages) steps.push("소개·개인정보처리방침 페이지 만들기 (아래 초안 복사 → 티스토리에 공개 글로 올리고 메뉴에 연결)");
+  const pct = Math.min(100, Math.round(total / target * 100));
+  return `<div class="card ${steps.length ? "" : "accent"}" style="margin-top:14px"><div class="row between"><h3>💰 애드센스 준비도</h3>
+    <span class="pill ${steps.length ? "warn" : "good"}">${steps.length ? `할 일 ${steps.length}개` : "신청 준비 완료"}</span></div>
+    <div class="row between small"><span>티스토리 글 <b>${total}</b> / ${target}</span><span class="muted">평균 ${a.avg_chars ? a.avg_chars.toLocaleString() + "자" : "–"}</span></div>
+    <div class="meter"><i style="width:${pct}%"></i></div>
+    ${steps.length ? `<div class="list" style="margin-top:10px">` + steps.map(t => `<div class="li"><div class="check"></div><div class="main small">${esc(t)}</div></div>`).join("") + `</div>`
+      : `<p class="small" style="margin:10px 0 0">구글 애드센스 → 사이트 추가 → 티스토리 주소 입력 → 안내 코드를 티스토리에 넣고 신청하세요.</p>`}
+    <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:12px">
+      <button class="btn sm" data-act="copyAbout">소개 페이지 초안 복사</button>
+      <button class="btn sm" data-act="copyPrivacy">개인정보처리방침 초안 복사</button>
+      ${pages ? "" : `<button class="btn ghost sm" data-act="pagesDone">페이지 만들었어요 ✓</button>`}</div>
+    <p class="small muted" style="margin:8px 0 0">목표치는 공식 기준이 아니라 실무 권장치예요 (기능 스위치에서 변경). 초안은 일반 블로그용 예시라 법률 자문이 아니니 확인 후 쓰세요.</p></div>`;
+}
+function aboutText(){
+  const b = getPath(S.eff, "brand") || {}, m = getPath(S.eff, "monetization") || {};
+  return [`${b.name || "칼퇴연구소"} 소개`, "", b.tagline || "", "",
+    `${b.name || "칼퇴연구소"}는 현업 개발자가 운영하는 AI 툴·업무 자동화 큐레이션 블로그입니다. 기업의 공식 발표와 공식 블로그, GitHub·Product Hunt 같은 1차 자료를 바탕으로 직장인이 업무에 바로 쓸 수 있는 관점에서 정리합니다.`, "",
+    "콘텐츠 원칙", "- 모든 글에 공식 원문 링크를 함께 적습니다.", "- 원문에서 확인되지 않은 수치나 기능은 쓰지 않습니다.",
+    m.ai_disclosure ? `- ${m.ai_disclosure}` : "- 일부 글은 AI 도구의 도움을 받아 작성하고 운영자가 검수합니다.",
+    "- 제휴 링크가 포함된 글에는 그 사실을 표시합니다.", "", "문의", m.contact_cta || ""].join("\n");
+}
+function privacyText(){
+  const b = getPath(S.eff, "brand") || {}, m = getPath(S.eff, "monetization") || {};
+  const name = b.name || "칼퇴연구소", today = new Intl.DateTimeFormat("ko-KR", {timeZone:TZ, year:"numeric", month:"long", day:"numeric"}).format(new Date());
+  return [`개인정보처리방침`, "", `${name}(이하 '블로그')는 방문자의 개인정보를 소중히 다루며 관련 법령을 지키기 위해 노력합니다.`, "",
+    "1. 수집하는 정보", "블로그는 별도의 회원가입을 받지 않으며, 운영자가 직접 개인정보를 수집하지 않습니다. 댓글 작성 시 입력하는 정보는 블로그 플랫폼(티스토리)의 정책에 따라 처리됩니다.", "",
+    "2. 쿠키와 광고", "블로그에는 Google 애드센스 등 제3자 광고가 게재될 수 있습니다. Google을 포함한 제3자 공급업체는 쿠키를 사용해 방문자의 이 블로그 및 다른 웹사이트 방문 기록을 바탕으로 광고를 게재할 수 있습니다. 방문자는 Google 광고 설정(https://adssettings.google.com)에서 맞춤 광고를 끌 수 있고, 브라우저 설정에서 쿠키 저장을 거부할 수 있습니다.", "",
+    "3. 방문 통계", "블로그 플랫폼이 제공하는 방문 통계(유입 경로, 방문 수 등)는 개인을 식별할 수 없는 형태로 콘텐츠 개선에만 활용합니다.", "",
+    "4. 외부 링크와 제휴", "글에는 공식 원문 등 외부 사이트 링크가 포함되며, 제휴 링크가 있는 경우 글에 표시합니다. 외부 사이트의 개인정보 처리는 해당 사이트의 정책을 따릅니다.", "",
+    "5. 문의", m.contact_cta || "", "", `시행일: ${today}`].join("\n");
 }
 
 /* ================================================================ 기능 스위치 */
@@ -1016,6 +1082,9 @@ const RUN_ACTIONS = {
     dispatch("daily.yml", {only:"sns", format:"", dry_run:"false", topic_url:u, sponsor_brand:b}); },
   runApprove: () => dispatch("approve.yml"),
   suggestReply: () => suggestReply(),
+  copyAbout: async () => { try { await navigator.clipboard.writeText(aboutText()); toast("소개 페이지 초안을 복사했어요"); } catch { toast("복사가 막혔어요", true); } },
+  copyPrivacy: async () => { try { await navigator.clipboard.writeText(privacyText()); toast("개인정보처리방침 초안을 복사했어요"); } catch { toast("복사가 막혔어요", true); } },
+  pagesDone: async () => { setVal("features.adsense_helper.pages_done", true); if (await save(null, "settings: 애드센스 필수 페이지 완료")) { toast("체크했어요"); render(); } },
   copyReply: async t => { try { await navigator.clipboard.writeText(t.dataset.text); toast("복사했어요 · 붙여넣기만 하세요"); } catch { toast("복사가 막혔어요. 길게 눌러 직접 복사해 주세요", true); } },
   runWeekly: () => dispatch("weekly.yml"),
   pause: () => doPause(+$("#pDays").value),
