@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>칼퇴연구소 대시보드</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+<style>
+:root{
+  --bg:#0A0A0A; --surface:#141414; --surface2:#1C1C1C; --line:#2A2A2A;
+  --text:#F5F5F5; --text2:#B8B8B8; --muted:#7A7A7A;
+  --accent:#C6FF3D; --accent-ink:#0A0A0A; --accent-dim:rgba(198,255,61,.12);
+  --good:#7EE081; --warn:#FFC24B; --bad:#FF6B6B;
+  --r:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:Pretendard,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+button{font:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+textarea{min-height:76px;resize:vertical}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em;background:var(--surface2);padding:1px 6px;border-radius:6px}
+.hidden{display:none!important}
+.wrap{max-width:980px;margin:0 auto;padding:0 16px}
+
+/* header & tabs */
+header{position:sticky;top:0;z-index:20;background:rgba(10,10,10,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;gap:12px;height:58px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.02em}
+.logo b{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font-size:15px}
+.repo{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top .sp{flex:1}
+.iconbtn{background:none;border:1px solid var(--line);color:var(--text2);border-radius:10px;height:34px;padding:0 12px;font-size:13px}
+.iconbtn:hover{border-color:var(--text2);color:var(--text)}
+nav.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-bottom:10px}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs a{flex:none;color:var(--text2);padding:7px 14px;border-radius:999px;font-weight:600;font-size:14px}
+nav.tabs a:hover{text-decoration:none;color:var(--text)}
+nav.tabs a.on{background:var(--accent);color:var(--accent-ink)}
+
+main{padding:20px 0 120px}
+h2{font-size:21px;margin:6px 0 4px;letter-spacing:-.02em}
+.lead{color:var(--text2);margin:0 0 18px;font-size:14px}
+h3{font-size:16px;margin:0 0 10px;letter-spacing:-.01em}
+.grid{display:grid;gap:14px;align-items:start}
+@media(min-width:760px){.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.card.accent{border-color:rgba(198,255,61,.45);background:linear-gradient(180deg,rgba(198,255,61,.07),transparent 60%),var(--surface)}
+.muted{color:var(--muted)} .small{font-size:13px}
+.row{display:flex;align-items:center;gap:10px}
+.between{justify-content:space-between}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;background:var(--surface2);color:var(--text2);white-space:nowrap}
+.pill.good{color:var(--good);background:rgba(126,224,129,.1)} .pill.warn{color:var(--warn);background:rgba(255,194,75,.1)}
+.pill.bad{color:var(--bad);background:rgba(255,107,107,.1)} .pill.acc{color:var(--accent);background:var(--accent-dim)}
+.btn{border:none;border-radius:10px;padding:10px 16px;font-weight:700;background:var(--surface2);color:var(--text)}
+.btn:hover{filter:brightness(1.15)} .btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:none;border:1px solid var(--line);color:var(--text2)}
+.btn.danger{background:rgba(255,107,107,.14);color:var(--bad)}
+.btn.sm{padding:6px 11px;font-size:13px;border-radius:8px}
+
+/* list rows */
+.list{display:flex;flex-direction:column}
+.li{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--line)}
+.li:first-child{border-top:none;padding-top:2px}
+.li .main{flex:1;min-width:0}
+.li .t{font-weight:600;overflow-wrap:anywhere}
+.check{width:22px;height:22px;flex:none;border-radius:7px;border:1.5px solid var(--line);display:grid;place-items:center;margin-top:1px;font-size:13px}
+.check.done{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:900}
+.check.opt{border-style:dashed}
+
+/* stat tiles */
+.stat .k{color:var(--text2);font-size:13px}
+.stat .v{font-size:28px;font-weight:800;letter-spacing:-.03em;line-height:1.2;margin-top:4px}
+.stat .s{color:var(--muted);font-size:12.5px;margin-top:2px}
+.meter{height:6px;background:var(--surface2);border-radius:99px;overflow:hidden;margin-top:10px}
+.meter i{display:block;height:100%;background:var(--accent);border-radius:99px}
+
+/* switch */
+.switch{position:relative;width:46px;height:27px;flex:none}
+.switch input{opacity:0;width:0;height:0;position:absolute}
+.switch span{position:absolute;inset:0;background:var(--surface2);border:1px solid var(--line);border-radius:99px;transition:.18s}
+.switch span:before{content:"";position:absolute;width:21px;height:21px;left:2px;top:2px;background:var(--text2);border-radius:50%;transition:.18s}
+.switch input:checked+span{background:var(--accent);border-color:var(--accent)}
+.switch input:checked+span:before{transform:translateX(19px);background:var(--accent-ink)}
+.switch input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+
+/* forms */
+.field{margin-top:14px}
+.field>label,.field>.lbl{display:block;font-weight:600;font-size:14px;margin-bottom:6px}
+.field .help{color:var(--muted);font-size:12.5px;margin-top:5px}
+.field.inline{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.field.inline>label{margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:6px;background:var(--bg)}
+.chip{display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border-radius:8px;padding:4px 6px 4px 10px;font-size:13.5px}
+.chip button{background:none;border:none;color:var(--muted);padding:0 4px;font-size:15px;line-height:1}
+.chip button:hover{color:var(--bad)}
+.chips input{border:none;background:none;padding:5px;width:auto;flex:1;min-width:110px}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{text-align:left;color:var(--muted);font-weight:600;font-size:12.5px;padding:8px 6px;border-bottom:1px solid var(--line)}
+.tbl td{padding:9px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl td.num,.tbl th.num{text-align:right;font-variant-numeric:tabular-nums}
+.objrow{display:grid;gap:8px;grid-template-columns:1fr;padding:12px;border:1px solid var(--line);border-radius:12px;margin-top:8px;background:var(--bg)}
+@media(min-width:760px){.objrow.c3{grid-template-columns:1fr 1.3fr 2fr auto}.objrow.c4{grid-template-columns:1.2fr 2.4fr .6fr .9fr auto}}
+.objrow input,.objrow select{background:var(--surface)}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.week div{text-align:center;font-size:12.5px;color:var(--text2)}
+.week select{padding:8px 4px;text-align:center;font-size:13px}
+.sec-nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.sec-nav a{font-size:13px;padding:5px 11px;border:1px solid var(--line);border-radius:99px;color:var(--text2)}
+.sec-nav a:hover{text-decoration:none;color:var(--text);border-color:var(--text2)}
+.envnote{font-size:12px;color:var(--accent);margin-top:4px}
+
+/* feature cards */
+.feat{display:flex;flex-direction:column;gap:6px}
+.feat .head{display:flex;gap:12px;align-items:flex-start}
+.feat .name{font-weight:700;font-size:15.5px}
+.feat .id{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--muted)}
+.feat .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.feat details{margin-top:6px}
+.feat summary{cursor:pointer;color:var(--text2);font-size:13px;font-weight:600}
+.feat.on{border-color:rgba(198,255,61,.4)}
+
+/* savebar & toast & modal */
+.savebar{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(20,20,20,.97);border-top:1px solid var(--accent);transform:translateY(110%);visibility:hidden;transition:transform .2s,visibility .2s}
+.savebar.show{transform:none;visibility:visible}
+.savebar .wrap{display:flex;align-items:center;gap:10px}
+.toast{position:fixed;left:50%;top:72px;transform:translateX(-50%) translateY(-20px);opacity:0;z-index:50;background:var(--text);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;transition:.2s;max-width:92vw;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.toast.err{background:var(--bad);color:#fff}
+.modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:20px}
+.modal .box{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;max-width:420px;width:100%}
+
+/* login */
+.login{max-width:460px;margin:7vh auto 40px;padding:0 16px}
+.login .logo{font-size:20px;margin-bottom:18px}
+.login .logo b{width:38px;height:38px;font-size:18px;border-radius:11px}
+.login ol{padding-left:20px;color:var(--text2);font-size:13.5px;margin:8px 0 0}
+.login li{margin:4px 0}
+.err{color:var(--bad);font-size:13.5px;margin-top:10px}
+
+/* chart */
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .tip{position:absolute;pointer-events:none;background:var(--text);color:var(--bg);font-size:12.5px;font-weight:600;padding:5px 9px;border-radius:8px;white-space:nowrap;transform:translate(-50%,-115%);opacity:0;transition:opacity .1s}
+@media(max-width:600px){.repo,.top .lbl,.sbhint{display:none}}
+.empty{color:var(--muted);text-align:center;padding:26px 10px;font-size:14px}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-3px}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- 로그인 -->
+<section id="login" class="login hidden">
+  <div class="logo"><b>칼</b>칼퇴연구소 대시보드</div>
+  <div class="card">
+    <form id="loginForm">
+      <div class="field" style="margin-top:0">
+        <label for="repoIn">자동화 저장소</label>
+        <input id="repoIn" placeholder="내아이디/autochannel" autocomplete="off" spellcheck="false">
+        <div class="help">프로그램 코드를 올린 비공개 저장소 (아이디/저장소이름)</div>
+      </div>
+      <div class="field">
+        <label for="tokenIn">GitHub 토큰 (대시보드용)</label>
+        <input id="tokenIn" type="password" placeholder="github_pat_..." autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field inline">
+        <label for="rememberIn" style="font-weight:500;font-size:14px">이 기기에서 로그인 유지</label>
+        <label class="switch"><input id="rememberIn" type="checkbox" checked><span></span></label>
+      </div>
+      <div id="loginErr" class="err hidden"></div>
+      <button class="btn primary" style="width:100%;margin-top:16px" type="submit">연결</button>
+    </form>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3 style="font-size:14.5px">토큰 만드는 법 (1회, 3분)</h3>
+    <ol>
+      <li>GitHub → Settings → Developer settings → Personal access tokens → <b>Fine-grained tokens</b> → Generate new token</li>
+      <li>이름 <code>dashboard</code>, 만료 1년, Repository access: <b>Only select repositories</b> → 자동화 저장소 하나만</li>
+      <li>Repository permissions: <b>Contents: Read and write</b>, <b>Actions: Read and write</b> (Metadata는 자동)</li>
+      <li>생성된 토큰을 위에 붙여넣기</li>
+    </ol>
+    <p class="small muted" style="margin:10px 0 0">토큰은 이 브라우저에만 저장되고 GitHub 외 다른 곳으로 전송되지 않습니다. 공용 PC에서는 '로그인 유지'를 끄세요.</p>
+  </div>
+</section>
+
+<!-- 앱 -->
+<div id="app" class="hidden">
+  <header>
+    <div class="wrap">
+      <div class="top">
+        <div class="logo"><b>칼</b><span>칼퇴연구소</span></div>
+        <span class="repo" id="repoLabel"></span>
+        <span class="sp"></span>
+        <button class="iconbtn" id="refreshBtn" title="새로고침">↻<span class="lbl"> 새로고침</span></button>
+        <button class="iconbtn" id="logoutBtn">로그아웃</button>
+      </div>
+      <nav class="tabs" id="tabs">
+        <a href="#home" data-v="home">홈</a>
+        <a href="#features" data-v="features">기능 스위치</a>
+        <a href="#config" data-v="config">설정</a>
+        <a href="#queue" data-v="queue">인스타 대기열</a>
+        <a href="#stats" data-v="stats">성과</a>
+        <a href="#run" data-v="run">실행</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap" id="view"><div class="empty"><span class="spin"></span> 불러오는 중…</div></main>
+</div>
+
+<div class="savebar" id="savebar">
+  <div class="wrap">
+    <div style="flex:1"><b id="dirtyCount">0</b>개 항목 변경됨 <span class="small muted sbhint">· 저장하면 다음 실행부터 적용</span></div>
+    <button class="btn ghost sm" id="discardBtn">되돌리기</button>
+    <button class="btn primary sm" id="saveBtn">저장</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="modal hidden" id="modal"><div class="box"><h3 id="mTitle"></h3><p id="mBody" class="small" style="color:var(--text2);margin:0 0 16px"></p><div class="row" style="justify-content:flex-end"><button class="btn ghost sm" id="mNo">취소</button><button class="btn primary sm" id="mYes">확인</button></div></div></div>
+
+<script>
+"use strict";
+/* ================================================================ 상수 */
+const TZ = "Asia/Seoul";
+const API = "https://api.github.com";
+const FORMAT_LABEL = {explainer:"뉴스 해설", spotlight:"툴 소개", roundup:"모음"};
+const DAYS = ["월","화","수","목","금","토","일"];
+const STATUS_LABEL = {pending:["승인 대기","warn"], approved:["예약됨","acc"], done:["게시 완료","good"], skipped:["건너뜀",""], expired:["만료",""]};
+const TARGET_LABEL = {carousel:"캐러셀", reel:"릴스"};
+const RESULT_LABEL = {sent:"텔레그램 전송", rejected:"검수 보류 (자동 발행 안 함)", fallback:"자동 발행 실패 · 수동 발행 필요", dry:"시험 실행", pack:"텔레그램 전송 · 인스타 승인 대기", "sent-with-warnings":"텔레그램 전송 (검수 경고 있음)"};
+const WF_LABEL = {"daily.yml":"일일 생성","approve.yml":"승인 처리","weekly.yml":"주간 리포트","refresh-ig-token.yml":"토큰 갱신","deploy-dashboard.yml":"대시보드 배포"};
+
+const REQUIRED_SECRETS = [
+  ["ANTHROPIC_API_KEY","Claude API 키"],["TELEGRAM_BOT_TOKEN","텔레그램 봇 토큰"],["TELEGRAM_CHAT_ID","텔레그램 채팅 ID"],
+  ["TISTORY_BLOG_NAME","티스토리 블로그 이름"],["TISTORY_STORAGE_STATE_B64","티스토리 로그인 세션"]];
+const INSTA_SECRETS = [["IG_ACCESS_TOKEN","인스타 토큰"],["IG_USER_ID","인스타 사용자 ID"],["ASSETS_REPO","이미지 저장소"],["ASSETS_TOKEN","이미지 저장소 토큰"],["GH_PAT","자동 갱신·명령용 토큰"]];
+
+const FEATURES = [
+  {id:"approval_reminder", name:"승인 알림", when:"처음부터", needs:"없음",
+   desc:"정해진 시각까지 승인 안 한 인스타 패키지가 있으면 텔레그램으로 한 번 알려줘요.",
+   opts:[{k:"at", label:"알림 시각", type:"time"}]},
+  {id:"naver_check", name:"네이버 발행 체크", when:"처음부터", needs:"없음",
+   desc:"네이버 원고에 '✅ 네이버 발행함' 버튼을 달고, 정해진 시각까지 안 누르면 알려줘요. 주간 리포트에 발행 수도 집계해요.",
+   opts:[{k:"remind_at", label:"미발행 알림 시각", type:"time"}]},
+  {id:"threads", name:"스레드 교차 게시", when:"2주차~", needs:"Threads 토큰 2개",
+   secrets:["THREADS_ACCESS_TOKEN","THREADS_USER_ID"],
+   desc:"인스타 캐러셀이 게시되면 같은 이미지로 스레드에도 올려요. 글은 500자로 자동 축약돼요."},
+  {id:"comment_dm", name:"댓글 → DM 자동 발송", when:"3~4주차~", needs:"인스타 토큰에 댓글·메시지 권한",
+   desc:"캡션에 '댓글에 자료 남기면 DM' 안내를 넣고, 키워드 댓글에 원문 링크를 DM + 공개 답글로 보내요. 댓글당 1번, 7일 이내만 가능해요.",
+   opts:[{k:"keywords", label:"반응할 댓글 키워드", type:"chips"},
+         {k:"caption_cta", label:"캡션 안내 문구", type:"textarea"},
+         {k:"message", label:"DM 내용", type:"textarea", help:"{title} = 게시물 제목, {source_url} = 공식 원문 링크"},
+         {k:"public_reply", label:"공개 답글", type:"text"},
+         {k:"max_per_run", label:"한 번에 최대 발송 수", type:"number", min:1, max:100}]},
+  {id:"shorts_assist", name:"유튜브 쇼츠 보조", when:"릴스 반응 확인 후", needs:"유튜브 채널",
+   desc:"릴스 영상과 함께 쇼츠용 제목·설명을 텔레그램으로 보내요. 업로드는 유튜브 앱에서 직접(1분)."},
+  {id:"affiliate_utm", name:"제휴 링크 UTM", when:"제휴 링크 등록 후", needs:"설정 › 수익화에 실제 제휴 링크",
+   desc:"제휴 링크에 utm_source=채널명을 자동으로 붙여 어느 채널에서 클릭이 났는지 볼 수 있어요.",
+   opts:[{k:"campaign", label:"캠페인 이름 (utm_campaign)", type:"text"}]},
+  {id:"monthly_best", name:"월간 베스트", when:"1개월~", needs:"주간 통계 4주 이상",
+   desc:"매달 첫 토요일 모음 회차를 지난달 저장이 많았던 TOP5 재편집으로 바꿔요."},
+  {id:"newsletter", name:"뉴스레터 원고", when:"블로그 글 20개~", needs:"뉴스레터 서비스(스티비·메일리 등)",
+   desc:"월요일 주간 리포트 때 지난주 글·인기 게시물을 모은 HTML 원고를 파일로 보내요."},
+  {id:"media_kit", name:"미디어킷", when:"팔로워 1,000~", needs:"문의처",
+   desc:"매달 첫 월요일, 팔로워·평균 도달·저장 수가 담긴 미디어킷 이미지를 만들어요. 광고 문의 답장용이에요.",
+   opts:[{k:"contact", label:"미디어킷에 넣을 문의처", type:"text"}]},
+];
+
+/* 설정 화면 구성: [섹션 id, 제목, 설명, 필드들] */
+const CONFIG_SECTIONS = [
+  ["publish","발행 기본","하루에 몇 개를, 어떻게 올릴지",[
+    {p:"tistory.visibility", label:"티스토리 공개 범위", type:"select", options:[["private","비공개 (처음 1~2주 권장)"],["protected","보호"],["public","공개"]]},
+    {p:"tistory.category", label:"티스토리 카테고리", type:"text", help:"블로그에 미리 만들어 둔 카테고리 이름. 없으면 비워두기"},
+    {p:"daily.tistory_posts", label:"하루 티스토리 글 수", type:"number", min:0, max:3, help:"처음엔 1개 권장 (대량 자동 발행은 검색 품질 정책 위험)"},
+    {p:"daily.sns_packs", label:"하루 인스타·네이버 세트 수", type:"number", min:0, max:3},
+  ]],
+  ["insta","인스타 게시","승인 후 공식 API로 올리는 방식",[
+    {p:"instagram.auto_publish", label:"승인하면 자동 게시", type:"toggle", help:"끄면 텔레그램에서 받아 직접 업로드"},
+    {p:"instagram.publish_mode", label:"게시 시점", type:"select", options:[["slot","정해진 시간에 (권장)"],["immediate","승인 즉시"]]},
+    {p:"instagram.publish_slots", label:"게시 시간 (KST)", type:"times", help:"승인 처리가 :05·:35분에 돌아 실제 게시는 최대 30분 뒤"},
+    {p:"instagram.max_posts_per_day", label:"하루 최대 게시 수", type:"number", min:1, max:10},
+    {p:"instagram.fixed_hashtags", label:"고정 해시태그 (최대 2개)", type:"chips", max:2, help:"# 없이 입력. 인스타 해시태그는 게시물당 최대 5개"},
+  ]],
+  ["formats","요일별 포맷","요일마다 어떤 형식의 카드뉴스를 만들지",[
+    {p:"formats.sns_by_weekday", label:"", type:"week"},
+    {p:"formats.roundup_size", label:"모음 회차 소식 개수", type:"number", min:3, max:8},
+  ]],
+  ["brand","브랜드·시리즈명","카드와 글에 들어가는 이름",[
+    {p:"brand.name", label:"채널 이름", type:"text"},
+    {p:"brand.tagline", label:"한 줄 소개", type:"text"},
+    {p:"cardnews.handle", label:"카드 하단 핸들", type:"text"},
+    {p:"formats.series_labels.explainer", label:"시리즈명 · 뉴스 해설", type:"text"},
+    {p:"formats.series_labels.spotlight", label:"시리즈명 · 툴 소개", type:"text"},
+    {p:"formats.series_labels.roundup", label:"시리즈명 · 모음", type:"text"},
+    {p:"tistory.thumbnail_label", label:"블로그 대표 이미지 상단 문구", type:"text"},
+  ]],
+  ["money","수익화","문의 안내, 제휴 링크, 고지 문구",[
+    {p:"monetization.contact_cta", label:"블로그·네이버 하단 문의 안내", type:"textarea", help:"오픈카톡 링크를 꼭 실제 주소로 바꿔 주세요"},
+    {p:"monetization.contact_cta_insta", label:"인스타 캡션 하단 문의 안내", type:"text"},
+    {p:"monetization.affiliates", label:"제휴 링크", type:"objlist", cls:"c3",
+     cols:[{k:"keyword",ph:"글에 나오면 (예: Notion)"},{k:"label",ph:"버튼 문구"},{k:"url",ph:"https://제휴링크"}],
+     help:"글에 키워드가 나오면 하단 '추천 툴'에 링크를 넣고 제휴 고지를 자동으로 붙여요. 예시(example.com)는 지워 주세요."},
+    {p:"monetization.affiliate_disclosure", label:"제휴 고지 문구", type:"textarea"},
+    {p:"monetization.ai_disclosure", label:"AI 활용 고지 문구", type:"textarea", help:"원치 않으면 비워두기"},
+  ]],
+  ["sources","수집 소스","공식 1차 소스만 넣어 주세요 (타인 블로그·커뮤니티 금지)",[
+    {p:"sources.rss", label:"공식 RSS 피드", type:"objlist", cls:"c4",
+     cols:[{k:"name",ph:"이름"},{k:"url",ph:"https://…/feed"},{k:"weight",ph:"가중치",num:true},{k:"type",ph:"official",sel:[["official","공식"],["github_trending","GitHub"],["producthunt","PH"]]}],
+     template:{name:"",url:"",weight:1.0,type:"official"}},
+    {p:"sources.github_trending.enabled", label:"GitHub Trending 수집", type:"toggle"},
+    {p:"sources.github_trending.languages", label:"GitHub 언어", type:"chips", help:"빈 값 = 전체. 예: python, typescript"},
+    {p:"sources.producthunt.enabled", label:"Product Hunt 수집", type:"toggle"},
+    {p:"target_keywords", label:"관심 키워드 (선별 점수에 반영)", type:"chips"},
+    {p:"daily.max_item_age_hours", label:"이보다 오래된 소식은 제외 (시간)", type:"number", min:12, max:168},
+  ]],
+  ["connect","연결","비밀값이 아닌 연결 정보",[
+    {p:"telegram.naver_blog_id", label:"네이버 블로그 아이디", type:"text", help:"텔레그램의 '네이버 글쓰기' 버튼용"},
+    {p:"telegram.public_channel", label:"구독자용 공개 텔레그램 채널", type:"text", help:"예: @kaltoelab_news (비우면 발송 안 함)"},
+    {p:"image_host.github_repo", label:"카드 이미지 저장소", type:"text", help:"비우면 Secrets의 ASSETS_REPO 사용"},
+    {p:"dashboard.url", label:"이 대시보드 주소", type:"text", help:"텔레그램 /status 에 링크로 표시"},
+  ]],
+  ["claude","Claude","모델과 비용",[
+    {p:"llm.writer_model", label:"본문 작성 모델", type:"model"},
+    {p:"llm.checker_model", label:"팩트체크 모델", type:"model", help:"비용을 줄이려면 haiku"},
+    {p:"llm.triage_model", label:"주제 선별 모델", type:"model"},
+    {p:"llm.max_regenerate", label:"검수 실패 시 재작성 횟수", type:"number", min:0, max:3},
+    {p:"llm.monthly_credit_usd", label:"월 API 크레딧 ($)", type:"number", min:0, max:10000, help:"비용 표시용 (Ultra = 200)"},
+    {p:"seo.min_score", label:"SEO 최소 점수 (미달 시 재작성)", type:"number", min:0, max:100},
+  ]],
+];
+
+/* ================================================================ 상태 */
+const S = {repo:"", token:"", info:null, base:null, settings:{config:{}}, eff:null, draft:null, dirty:new Set(),
+           status:null, state:null, insights:null, runs:[], view:"home", loaded:false};
+
+/* ================================================================ 유틸 */
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clone = v => v === undefined ? undefined : JSON.parse(JSON.stringify(v));
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const isObj = v => v && typeof v === "object" && !Array.isArray(v);
+function getPath(o, p){ return p.split(".").reduce((a, k) => a == null ? undefined : a[k], o); }
+function setPath(o, p, v){ const ks = p.split("."); let n = o; ks.slice(0,-1).forEach(k => { if(!isObj(n[k])) n[k] = {}; n = n[k]; }); n[ks[ks.length-1]] = v; }
+function deepMerge(base, over){
+  const out = clone(base) || {};
+  for (const [k, v] of Object.entries(over || {})) out[k] = (isObj(v) && isObj(out[k])) ? deepMerge(out[k], v) : clone(v);
+  return out;
+}
+function diff(base, cur){            // settings.json 에 넣을 '기본값과 다른 부분'만
+  if (isObj(cur) && (isObj(base) || base === undefined)) {
+    const out = {};
+    for (const k of Object.keys(cur)) { const d = diff(base ? base[k] : undefined, cur[k]); if (d !== undefined) out[k] = d; }
+    return Object.keys(out).length ? out : undefined;
+  }
+  if (base === undefined && (cur === null || cur === undefined)) return undefined;
+  return same(base, cur) ? undefined : clone(cur);
+}
+const isEnv = v => typeof v === "string" && /^\$\{[A-Z0-9_]+\}$/.test(v);
+const envName = v => v.slice(2, -1);
+function b64decodeUtf8(b64){ const bin = atob(b64.replace(/\n/g, "")); return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))); }
+function b64encodeUtf8(str){ const bytes = new TextEncoder().encode(str); let bin = ""; bytes.forEach(b => bin += String.fromCharCode(b)); return btoa(bin); }
+const fmtKST = (iso, opt = {month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", hour12:false}) =>
+  iso ? new Intl.DateTimeFormat("ko-KR", {timeZone:TZ, ...opt}).format(new Date(iso)) : "–";
+const kstDate = d => new Intl.DateTimeFormat("en-CA", {timeZone:TZ}).format(d);
+function ago(iso){
+  const s = (Date.now() - new Date(iso)) / 1000;
+  if (s < 60) return "방금"; if (s < 3600) return `${Math.floor(s/60)}분 전`;
+  if (s < 86400) return `${Math.floor(s/3600)}시간 전`; return `${Math.floor(s/86400)}일 전`;
+}
+function dday(iso){
+  if (!iso) return {txt:"확인 불가", cls:""};
+  const d = Math.floor((new Date(iso) - Date.now()) / 86400000);
+  if (d < 0) return {txt:`만료됨 (${fmtKST(iso,{year:"numeric",month:"2-digit",day:"2-digit"})})`, cls:"bad"};
+  return {txt:`${fmtKST(iso,{year:"numeric",month:"2-digit",day:"2-digit"})} · D-${d}`, cls: d <= 14 ? "warn" : "good"};
+}
+function toast(msg, err = false){ const t = $("#toast"); t.textContent = msg; t.className = "toast show" + (err ? " err" : ""); clearTimeout(t._h); t._h = setTimeout(() => t.className = "toast", err ? 5000 : 2600); }
+function confirmBox(title, body, yes = "확인"){
+  return new Promise(res => {
+    $("#mTitle").textContent = title; $("#mBody").textContent = body; $("#mYes").textContent = yes;
+    $("#modal").classList.remove("hidden");
+    const done = v => { $("#modal").classList.add("hidden"); $("#mYes").onclick = $("#mNo").onclick = null; res(v); };
+    $("#mYes").onclick = () => done(true); $("#mNo").onclick = () => done(false);
+  });
+}
+const store = {
+  get(k){ try { return localStorage.getItem(k) ?? sessionStorage.getItem(k); } catch { return null; } },
+  set(k, v, persist){ try { (persist ? localStorage : sessionStorage).setItem(k, v); } catch {} },
+  clear(){ try { ["kd_token","kd_repo"].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); }); } catch {} },
+};
+
+/* ================================================================ GitHub API */
+class GhError extends Error { constructor(status, msg){ super(msg); this.status = status; } }
+async function gh(path, {method = "GET", body, raw = false, allow404 = false} = {}){
+  const r = await fetch(API + path, {method, cache:"no-store", headers:{
+      "Authorization":"Bearer " + S.token, "X-GitHub-Api-Version":"2022-11-28",
+      "Accept": raw ? "application/vnd.github.raw+json" : "application/vnd.github+json",
+      ...(body ? {"Content-Type":"application/json"} : {})},
+    body: body ? JSON.stringify(body) : undefined});
+  if (r.status === 404 && allow404) return null;
+  if (r.status === 204) return {};
+  if (!r.ok) {
+    let msg = ""; try { msg = (await r.json()).message || ""; } catch {}
+    throw new GhError(r.status, msg || r.statusText);
+  }
+  return raw ? r.text() : r.json();
+}
+const repoPath = p => `/repos/${S.repo}${p}`;
+async function readFile(file, {json = false, yaml = false} = {}){
+  const t = await gh(repoPath(`/contents/${file}?ref=${encodeURIComponent(S.info.default_branch)}`), {raw:true, allow404:true});
+  if (t == null) return null;
+  if (json) { try { return JSON.parse(t); } catch { return null; } }
+  if (yaml) return jsyaml.load(t);
+  return t;
+}
+async function readSettings(){
+  const r = await gh(repoPath(`/contents/data/settings.json?ref=${encodeURIComponent(S.info.default_branch)}`), {allow404:true});
+  if (!r) return {data:{config:{}}, sha:null};
+  let data = {config:{}};
+  try { data = JSON.parse(b64decodeUtf8(r.content)); } catch {}
+  data.config = data.config || {};
+  return {data, sha:r.sha};
+}
+async function writeSettings(data, sha, message){
+  const body = {message: message + " [skip ci]", branch:S.info.default_branch,
+                content: b64encodeUtf8(JSON.stringify(data, null, 2) + "\n")};
+  if (sha) body.sha = sha;
+  return gh(repoPath("/contents/data/settings.json"), {method:"PUT", body});
+}
+function explain(e){
+  if (e.status === 401) return "토큰이 올바르지 않거나 만료됐어요. 다시 로그인해 주세요.";
+  if (e.status === 403) return "권한이 부족해요. 토큰에 Contents·Actions 'Read and write' 권한이 있는지 확인해 주세요.";
+  if (e.status === 404) return "저장소를 찾을 수 없어요. 이름과 토큰의 저장소 접근 범위를 확인해 주세요.";
+  if (e.status === 409 || e.status === 422) return "다른 곳(텔레그램 등)에서 방금 설정이 바뀌었어요. 다시 시도해 주세요.";
+  return e.message || "알 수 없는 오류";
+}
+
+/* ================================================================ 로그인 */
+function showLogin(err = ""){
+  $("#app").classList.add("hidden"); $("#login").classList.remove("hidden");
+  $("#repoIn").value = S.repo || store.get("kd_repo") || guessRepo();
+  $("#loginErr").textContent = err; $("#loginErr").classList.toggle("hidden", !err);
+}
+function guessRepo(){ const m = location.hostname.match(/^([^.]+)\.github\.io$/); return m ? `${m[1]}/autochannel` : ""; }
+async function connect(repo, token, remember){
+  S.repo = repo.trim().replace(/^https:\/\/github\.com\//, "").replace(/\/$/, ""); S.token = token.trim();
+  S.info = await gh(`/repos/${S.repo}`);
+  if (S.info.permissions && !S.info.permissions.push) throw new GhError(403, "write");
+  store.set("kd_repo", S.repo, true); store.set("kd_token", S.token, remember);
+  $("#login").classList.add("hidden"); $("#app").classList.remove("hidden");
+  $("#repoLabel").textContent = S.repo;
+  await loadAll();
+}
+$("#loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const btn = e.submitter; btn.disabled = true; btn.innerHTML = '<span class="spin"></span> 연결 중';
+  try { await connect($("#repoIn").value, $("#tokenIn").value, $("#rememberIn").checked); }
+  catch (err) { showLogin(explain(err)); }
+  finally { btn.disabled = false; btn.textContent = "연결"; }
+});
+$("#logoutBtn").onclick = async () => {
+  if (S.dirty.size && !await confirmBox("저장하지 않은 변경이 있어요", "로그아웃하면 변경 내용이 사라집니다.", "로그아웃")) return;
+  store.clear(); S.token = ""; S.dirty.clear(); $("#tokenIn").value = ""; showLogin();
+};
+
+/* ================================================================ 데이터 */
+async function loadAll(){
+  $("#refreshBtn").disabled = true;
+  try {
+    const [base, st, status, state, insights, runs] = await Promise.all([
+      readFile("config.yaml", {yaml:true}), readSettings(),
+      readFile("data/status.json", {json:true}), readFile("data/state.json", {json:true}),
+      readFile("data/insights.json", {json:true}),
+      gh(repoPath("/actions/runs?per_page=25"), {allow404:true}).catch(() => null)]);
+    if (!base) throw new GhError(404, "config.yaml 이 없어요. 저장소에 프로그램 코드를 올렸는지 확인해 주세요.");
+    S.base = base; S.settings = st.data; S.eff = deepMerge(base, st.data.config);
+    if (!S.dirty.size) S.draft = clone(S.eff);
+    S.status = status || {}; S.state = state || {}; S.insights = insights || {posts:{}, followers:[]};
+    S.runs = (runs && runs.workflow_runs) || []; S.loaded = true;
+    render();
+  } catch (e) {
+    if (e.status === 401) { store.clear(); showLogin(explain(e)); return; }
+    $("#view").innerHTML = `<div class="card"><h3>불러오지 못했어요</h3><p class="small muted">${esc(explain(e))}</p></div>`;
+  } finally { $("#refreshBtn").disabled = false; }
+}
+$("#refreshBtn").onclick = async () => {
+  if (S.dirty.size && !await confirmBox("저장하지 않은 변경이 있어요", "새로고침해도 변경 내용은 유지되고, 다른 값만 최신으로 갱신돼요.", "새로고침")) return;
+  await loadAll(); toast("최신 상태로 갱신했어요");
+};
+
+/* 설정 편집: draft 에 반영하고 변경 경로를 기록 */
+function setVal(path, value){
+  setPath(S.draft, path, value);
+  if (same(getPath(S.eff, path), value)) S.dirty.delete(path); else S.dirty.add(path);
+  updateSavebar();
+}
+function updateSavebar(){ $("#dirtyCount").textContent = S.dirty.size; $("#savebar").classList.toggle("show", S.dirty.size > 0); }
+async function save(extra = null, message = "settings: 대시보드에서 변경"){
+  const btn = $("#saveBtn"); btn.disabled = true; btn.innerHTML = '<span class="spin"></span>';
+  try {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const latest = await readSettings();                         // 저장 직전 최신본 위에 내 변경만 얹기
+      const eff2 = deepMerge(S.base, latest.data.config);
+      for (const p of S.dirty) setPath(eff2, p, clone(getPath(S.draft, p)));
+      if (extra) for (const [p, v] of Object.entries(extra)) setPath(eff2, p, v);
+      const data = {...latest.data, config: diff(S.base, eff2) || {},
+                    updated_at: new Date().toISOString().slice(0,19) + "Z", updated_by: "dashboard"};
+      try { await writeSettings(data, latest.sha, message); }
+      catch (e) { if ((e.status === 409 || e.status === 422) && attempt === 0) continue; throw e; }
+      S.settings = data; S.eff = eff2; S.draft = clone(eff2); S.dirty.clear(); updateSavebar();
+      return true;
+    }
+  } catch (e) { toast(explain(e), true); return false; }
+  finally { btn.disabled = false; btn.textContent = "저장"; }
+}
+$("#saveBtn").onclick = async () => { if (await save()) { toast("저장했어요 · 다음 실행부터 적용"); render(); } };
+$("#discardBtn").onclick = () => { S.draft = clone(S.eff); S.dirty.clear(); updateSavebar(); render(); };
+window.addEventListener("beforeunload", e => { if (S.dirty.size) { e.preventDefault(); e.returnValue = ""; } });
+
+async function dispatch(workflow, inputs = {}){
+  try {
+    await gh(repoPath(`/actions/workflows/${workflow}/dispatches`), {method:"POST", body:{ref:S.info.default_branch, inputs}});
+    toast("실행을 요청했어요 · 잠시 뒤 '최근 실행'에 나타나요");
+    setTimeout(async () => { const r = await gh(repoPath("/actions/runs?per_page=25")).catch(() => null);
+      if (r) { S.runs = r.workflow_runs; if (S.view === "home" || S.view === "run") render(); } }, 6000);
+    return true;
+  } catch (e) {
+    toast(e.status === 404 ? `${WF_LABEL[workflow] || workflow} 워크플로를 찾을 수 없어요` : explain(e), true);
+    return false;
+  }
+}
+
+/* ================================================================ 라우팅 */
+const VIEWS = {home:viewHome, features:viewFeatures, config:viewConfig, queue:viewQueue, stats:viewStats, run:viewRun};
+function route(){
+  const h = location.hash.slice(1);
+  S.view = VIEWS[h] ? h : (h.startsWith("cfg-") ? "config" : "home");
+  document.querySelectorAll("#tabs a").forEach(a => a.classList.toggle("on", a.dataset.v === S.view));
+  if (S.loaded) render();
+}
+window.addEventListener("hashchange", route);
+function render(){
+  $("#view").innerHTML = VIEWS[S.view]();
+  bindFields();
+  if (S.view === "stats") drawCharts();
+  const h = location.hash.slice(1);
+  if (h.startsWith("cfg-")) { const el = document.getElementById(h); if (el) el.scrollIntoView({block:"start"}); }
+  updateSavebar();
+}
+
+/* ================================================================ 홈 */
+function setupItems(){
+  const c = S.draft, present = (S.status.secrets || {}).present, items = [];
+  const hist = S.state.history || [];
+  items.push({done: !/x{5,}/.test(getPath(c, "monetization.contact_cta") || ""), t:"오픈카톡 문의 링크 입력",
+              s:"블로그·네이버 하단에 들어가는 문의 안내", go:"#cfg-money"});
+  items.push({done: !(getPath(c, "monetization.affiliates") || []).some(a => /example\.com/.test(a.url || "")),
+              t:"예시 제휴 링크 지우기", s:"실제 제휴 링크가 없으면 전부 삭제", go:"#cfg-money"});
+  const vis = getPath(c, "tistory.visibility");
+  if (!hist.some(h => h.channel === "tistory" && String(h.result || "").startsWith("http")))
+    items.push({done: vis !== "public", t:"티스토리 처음엔 비공개로", s:`지금: ${vis === "public" ? "공개" : vis === "private" ? "비공개" : "보호"} · 1~2주 결과 확인 후 공개 권장`, go:"#cfg-publish"});
+  if (present) {
+    const miss = REQUIRED_SECRETS.filter(([n]) => !present[n]);
+    items.push({done: !miss.length, t:"필수 Secrets 등록", s: miss.length ? "미등록: " + miss.map(m => m[1]).join(", ") : "모두 등록됨",
+                href:`https://github.com/${S.repo}/settings/secrets/actions`});
+    const imiss = INSTA_SECRETS.filter(([n]) => !present[n]);
+    items.push({done: !imiss.length, opt:true, t:"인스타 자동 게시 Secrets", s: imiss.length ? "미등록: " + imiss.map(m => m[1]).join(", ") : "모두 등록됨",
+                href:`https://github.com/${S.repo}/settings/secrets/actions`});
+  } else {
+    items.push({done:false, t:"Secrets 등록 확인", s:"시험 실행을 한 번 돌리면 등록 여부가 여기 자동으로 표시돼요", href:`https://github.com/${S.repo}/settings/secrets/actions`});
+  }
+  items.push({done: S.runs.some(r => r.path && r.path.endsWith("daily.yml")), t:"첫 시험 실행", s:"발행·전송 없이 결과만 만들어 보기", go:"#run"});
+  items.push({done: !!getPath(c, "dashboard.url"), opt:true, t:"대시보드 주소 저장", s:"텔레그램 /status 에 이 화면 링크 표시", action:"saveUrl"});
+  return items;
+}
+function viewHome(){
+  const now = new Date(), today = kstDate(now);
+  const paused = getPath(S.eff, "control.paused_until") || S.state.paused_until;
+  const pausedOn = paused && new Date(paused) > now;
+  const items = setupItems(), left = items.filter(i => !i.done && !i.opt).length;
+  const hist = (S.state.history || []).filter(h => kstDate(new Date(h.at)) === today);
+  const packs = S.status.packs || [];
+  const pending = packs.filter(p => p.status === "pending").length;
+  const sched = packs.filter(p => p.status === "approved").flatMap(p => Object.entries(p.schedule || {})
+      .filter(([t]) => !(p.results || {})[t]).map(([t, at]) => ({t, at, title:p.title}))).sort((a,b) => a.at.localeCompare(b.at));
+  const h = S.status.health || {};
+  const cost = h.cost_month_usd, credit = h.credit_usd || getPath(S.eff, "llm.monthly_credit_usd") || 200;
+
+  let html = "";
+  if (pausedOn) html += `<div class="card accent row between" style="margin-bottom:14px"><div><b>⏸ 자동 생성 멈춤</b><div class="small muted">${fmtKST(paused)}까지 · 이미 승인한 인스타 게시는 예정대로 진행</div></div><button class="btn primary sm" data-act="resume">재개</button></div>`;
+
+  html += `<h2>안녕하세요 👋</h2><p class="lead">${left ? `처음 설정이 <b style="color:var(--accent)">${left}개</b> 남았어요.` : "기본 설정은 모두 끝났어요. 기능 스위치를 하나씩 켜 보세요."}</p>`;
+  html += `<div class="card ${left ? "accent" : ""}" style="margin-bottom:14px"><details ${left ? "open" : ""}><summary style="cursor:pointer;font-weight:700">처음 설정 체크리스트 <span class="pill ${left ? "warn" : "good"}" style="margin-left:6px">${items.filter(i=>i.done).length}/${items.length}</span></summary><div class="list" style="margin-top:12px">` +
+    items.map(i => `<div class="li"><div class="check ${i.done ? "done" : ""} ${i.opt ? "opt" : ""}">${i.done ? "✓" : ""}</div>
+      <div class="main"><div class="t">${esc(i.t)}${i.opt ? ' <span class="pill">선택</span>' : ""}</div><div class="small muted">${esc(i.s)}</div></div>
+      ${i.done ? "" : i.go ? `<a class="btn sm" href="${i.go}">설정</a>` : i.href ? `<a class="btn sm" href="${i.href}" target="_blank" rel="noopener">GitHub ↗</a>` : i.action ? `<button class="btn sm" data-act="${i.action}">저장</button>` : ""}</div>`).join("") +
+    `</div></details></div>`;
+
+  html += `<div class="grid g3" style="margin-bottom:14px">
+    <div class="card stat"><div class="k">오늘 만든 콘텐츠</div><div class="v">${hist.length}</div><div class="s">마지막 정상 실행 ${esc(S.state.last_success || "없음")}</div></div>
+    <div class="card stat"><div class="k">인스타 승인 대기</div><div class="v">${pending}</div><div class="s">${sched.length ? `다음 게시 ${fmtKST(sched[0].at)} · ${TARGET_LABEL[sched[0].t]}` : "예약된 게시 없음"}</div></div>
+    <div class="card stat"><div class="k">이번 달 Claude 비용 (추정)</div><div class="v">${cost != null ? "$" + cost.toFixed(2) : "–"}</div>
+      <div class="s">크레딧 $${credit}${cost != null ? ` 중 ${Math.round(cost / credit * 100)}%` : " · 첫 실행 후 표시"}</div>
+      ${cost != null ? `<div class="meter"><i style="width:${Math.min(100, cost / credit * 100)}%"></i></div>` : ""}</div></div>`;
+
+  html += `<div class="grid g2">`;
+  html += `<div class="card"><h3>오늘 만든 것</h3>${hist.length ? `<div class="list">` + hist.slice().reverse().map(x => {
+      const r = String(x.result || ""); const ok = r.startsWith("http");
+      return `<div class="li"><span class="pill ${x.channel === "tistory" ? "acc" : ""}">${x.channel === "tistory" ? "티스토리" : "SNS"}</span>
+        <div class="main"><div class="t">${esc(x.title)}</div><div class="small muted">${fmtKST(x.at, {hour:"2-digit", minute:"2-digit", hour12:false})} · ${ok ? `<a href="${esc(r)}" target="_blank" rel="noopener">발행됨 ↗</a>` : esc(RESULT_LABEL[r] || r || "텔레그램 전송")}</div></div></div>`;
+    }).join("") + `</div>` : `<div class="empty">오늘은 아직 없어요. 매일 07:10에 자동으로 만들어져요.</div>`}</div>`;
+
+  const runs = S.runs.slice(0, 8);
+  html += `<div class="card"><div class="row between"><h3>최근 실행</h3><a class="small" href="https://github.com/${esc(S.repo)}/actions" target="_blank" rel="noopener">전체 ↗</a></div>${runs.length ? `<div class="list">` + runs.map(r => {
+      const wf = (r.path || "").split("/").pop();
+      const st = r.status !== "completed" ? ["진행 중", "acc"] : r.conclusion === "success" ? ["성공", "good"] : r.conclusion === "skipped" || r.conclusion === "cancelled" ? ["취소", ""] : ["실패", "bad"];
+      return `<div class="li"><span class="pill ${st[1]}">${st[0]}</span><div class="main"><div class="t"><a href="${esc(r.html_url)}" target="_blank" rel="noopener" style="color:var(--text)">${esc(WF_LABEL[wf] || r.name)}</a></div><div class="small muted">${ago(r.created_at)} · ${r.event === "schedule" ? "자동" : "수동"}</div></div></div>`;
+    }).join("") + `</div>` : `<div class="empty">아직 실행 기록이 없어요.</div>`}</div>`;
+  html += `</div>`;
+
+  const exp = h.expiry || {};
+  const rows = [["인스타 토큰", exp.IG_ACCESS_TOKEN], ["이미지 저장소 토큰 (ASSETS_TOKEN)", exp.ASSETS_TOKEN], ["자동 갱신·명령 토큰 (GH_PAT)", exp.GH_PAT]];
+  html += `<div class="card" style="margin-top:14px"><h3>만료 일정</h3><div class="list">` + rows.map(([n, v]) => { const d = dday(v);
+      return `<div class="li"><div class="main">${n}</div><span class="pill ${d.cls}">${d.txt}</span></div>`; }).join("") +
+    `<div class="li"><div class="main">티스토리 로그인 세션</div><span class="pill">${h.tistory_saved_at ? `저장 후 ${Math.floor((Date.now() - new Date(h.tistory_saved_at)) / 86400000)}일` : "확인 불가"}</span></div>` +
+    `</div><p class="small muted" style="margin:10px 0 0">${h.at ? `기준: ${fmtKST(h.at)} 실행.` : "일일 실행 후 표시돼요."} 만료되면 텔레그램으로도 알려드려요.</p></div>`;
+  return html;
+}
+
+/* ================================================================ 기능 스위치 */
+function viewFeatures(){
+  const present = (S.status.secrets || {}).present;
+  let html = `<h2>기능 스위치</h2><p class="lead">기능은 모두 들어 있어요. 채널 상황에 맞춰 하나씩 켜고 1주일 지켜본 뒤 다음 것을 켜는 걸 권장해요. 텔레그램 <code>/feature</code>와 같은 설정을 공유해요.</p><div class="grid g2">`;
+  for (const f of FEATURES) {
+    const p = `features.${f.id}.enabled`, on = !!getPath(S.draft, p);
+    const miss = (f.secrets || []).filter(n => present && !present[n]);
+    html += `<div class="card feat ${on ? "on" : ""}">
+      <div class="head"><div style="flex:1"><div class="name">${esc(f.name)}</div><div class="id">/feature ${f.id}</div></div>
+        <label class="switch" title="${on ? "끄기" : "켜기"}"><input type="checkbox" data-path="${p}" data-type="toggle" ${on ? "checked" : ""}><span></span></label></div>
+      <div class="small" style="color:var(--text2)">${esc(f.desc)}</div>
+      <div class="meta"><span class="pill acc">권장: ${esc(f.when)}</span><span class="pill">준비: ${esc(f.needs)}</span>
+        ${miss.length ? `<span class="pill warn">미등록: ${miss.map(esc).join(", ")}</span>` : ""}</div>
+      ${f.opts ? `<details><summary>세부 설정</summary>${f.opts.map(o => fieldHTML({p:`features.${f.id}.${o.k}`, ...o, type: o.type === "time" ? "time" : o.type})).join("")}</details>` : ""}
+    </div>`;
+  }
+  return html + `</div>`;
+}
+
+/* ================================================================ 설정 */
+function viewConfig(){
+  let html = `<h2>설정</h2><p class="lead">여기서 바꾼 값은 <code>data/settings.json</code>에 저장되고 config.yaml 기본값보다 우선해요. 비밀값(토큰·API 키)은 GitHub Secrets에만 넣어 주세요.</p>`;
+  html += `<div class="sec-nav">` + CONFIG_SECTIONS.map(([id, t]) => `<a href="#cfg-${id}">${t}</a>`).join("") + `</div><div class="grid">`;
+  for (const [id, title, sub, fields] of CONFIG_SECTIONS)
+    html += `<div class="card" id="cfg-${id}" style="scroll-margin-top:120px"><h3 style="margin-bottom:2px">${title}</h3><div class="small muted">${sub}</div>${fields.map(fieldHTML).join("")}</div>`;
+  return html + `</div>`;
+}
+
+function fieldHTML(f){
+  const v = getPath(S.draft, f.p), baseV = getPath(S.base, f.p), id = "f_" + f.p.replace(/\./g, "_");
+  const help = f.help ? `<div class="help">${esc(f.help)}</div>` : "";
+  const lab = f.label ? `<label for="${id}">${esc(f.label)}</label>` : "";
+  const attrs = `id="${id}" data-path="${f.p}" data-type="${f.type}"`;
+  switch (f.type) {
+    case "toggle":
+      return `<div class="field inline"><div><label for="${id}">${esc(f.label)}</label>${help}</div><label class="switch"><input type="checkbox" ${attrs} ${v ? "checked" : ""}><span></span></label></div>`;
+    case "select":
+      return `<div class="field">${lab}<select ${attrs}>${f.options.map(([k, t]) => `<option value="${esc(k)}" ${v === k ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>${help}</div>`;
+    case "model": {
+      const models = Object.keys(getPath(S.draft, "llm.pricing") || {}).filter(m => m !== "default");
+      if (v && !models.includes(v)) models.unshift(v);
+      return `<div class="field">${lab}<select ${attrs}>${models.map(m => `<option ${v === m ? "selected" : ""}>${esc(m)}</option>`).join("")}</select>${help}</div>`;
+    }
+    case "number":
+      return `<div class="field">${lab}<input type="number" inputmode="numeric" ${attrs} value="${esc(v)}" min="${f.min ?? ""}" max="${f.max ?? ""}">${help}</div>`;
+    case "time":
+      return `<div class="field">${lab}<input type="time" ${attrs} value="${esc(v)}">${help}</div>`;
+    case "textarea":
+      return `<div class="field">${lab}<textarea ${attrs}>${esc(v)}</textarea>${help}</div>`;
+    case "text": {
+      const env = isEnv(v);
+      return `<div class="field">${lab}<input ${attrs} value="${env ? "" : esc(v)}" ${env ? `placeholder="Secrets의 ${envName(v)} 값 사용 중" data-env="${esc(baseV)}"` : ""} spellcheck="false">${env ? `<div class="envnote">비워두면 Secrets의 ${envName(v)} 값을 써요. 여기 입력하면 이 값이 우선이에요.</div>` : ""}${help}</div>`;
+    }
+    case "chips": case "times": {
+      const arr = Array.isArray(v) ? v : [];
+      return `<div class="field"><span class="lbl">${esc(f.label)}</span><div class="chips" data-path="${f.p}" data-type="${f.type}" data-max="${f.max || ""}">${arr.map((x, i) =>
+        `<span class="chip">${f.type === "chips" && x === "" ? "<i class='muted'>(전체)</i>" : esc(x)}<button type="button" data-chipdel="${i}" aria-label="삭제">×</button></span>`).join("")}
+        ${f.max && arr.length >= f.max ? "" : `<input ${f.type === "times" ? 'type="time"' : 'placeholder="입력 후 Enter"'} data-chipin>`}</div>${help}</div>`;
+    }
+    case "week": {
+      const tbl = v || {};
+      return `<div class="field"><div class="week">${DAYS.map((d, i) => `<div>${d}</div>`).join("")}${DAYS.map((d, i) => {
+        const cur = tbl[i] ?? tbl[String(i)];
+        return `<select data-path="${f.p}" data-type="week" data-day="${i}" aria-label="${d}요일">${Object.entries(FORMAT_LABEL).map(([k, t]) => `<option value="${k}" ${cur === k ? "selected" : ""}>${t}</option>`).join("")}</select>`; }).join("")}</div>
+        <div class="help">뉴스 해설 = 공식 발표 풀이 · 툴 소개 = GitHub·Product Hunt 신작 · 모음 = 저장하기 좋은 리스트형</div></div>`;
+    }
+    case "objlist": {
+      const arr = Array.isArray(v) ? v : [];
+      return `<div class="field"><span class="lbl">${esc(f.label)}</span>${arr.map((row, i) => `<div class="objrow ${f.cls}">${f.cols.map(c => c.sel
+          ? `<select data-path="${f.p}" data-type="objlist" data-i="${i}" data-k="${c.k}">${c.sel.map(([k, t]) => `<option value="${k}" ${row[c.k] === k ? "selected" : ""}>${t}</option>`).join("")}</select>`
+          : `<input data-path="${f.p}" data-type="objlist" data-i="${i}" data-k="${c.k}" ${c.num ? 'type="number" step="0.1"' : ""} value="${esc(row[c.k])}" placeholder="${esc(c.ph)}" spellcheck="false">`).join("")}
+          <button type="button" class="btn danger sm" data-objdel="${i}" data-path="${f.p}">삭제</button></div>`).join("")}
+        <button type="button" class="btn ghost sm" style="margin-top:8px" data-objadd data-path="${f.p}">+ 추가</button>${help}</div>`;
+    }
+  }
+  return "";
+}
+
+/* 입력 이벤트 → draft */
+function bindFields(){
+  const root = $("#view");
+  root.oninput = root.onchange = e => {
+    const el = e.target, path = el.dataset.path, type = el.dataset.type;
+    if (!path || el.hasAttribute("data-chipin")) return;
+    if (type === "toggle") { setVal(path, el.checked); el.closest(".feat")?.classList.toggle("on", el.checked); return; }
+    if (type === "number") { if (el.value === "") return; setVal(path, Number(el.value)); return; }
+    if (type === "week") { const t = clone(getPath(S.draft, path)) || {}; delete t[Number(el.dataset.day)]; t[String(el.dataset.day)] = el.value; setVal(path, t); return; }
+    if (type === "objlist") { const arr = clone(getPath(S.draft, path)) || []; arr[+el.dataset.i][el.dataset.k] = el.type === "number" ? Number(el.value) : el.value; setVal(path, arr); return; }
+    if (type === "text" && el.dataset.env !== undefined && el.value.trim() === "") { setVal(path, el.dataset.env); return; }
+    setVal(path, el.value);
+  };
+  root.onkeydown = e => {
+    const el = e.target;
+    if (!el.hasAttribute("data-chipin") || (e.key !== "Enter" && e.key !== ",")) return;
+    e.preventDefault(); addChip(el);
+  };
+  root.onfocusout = e => { const el = e.target; if (el.hasAttribute && el.hasAttribute("data-chipin") && el.value && el.type === "time") addChip(el); };
+  root.onclick = async e => {
+    const t = e.target.closest("button,[data-act]"); if (!t) return;
+    if (t.dataset.chipdel !== undefined) {
+      const box = t.closest(".chips"), arr = clone(getPath(S.draft, box.dataset.path)) || [];
+      arr.splice(+t.dataset.chipdel, 1); setVal(box.dataset.path, arr); rerenderKeepScroll(); return;
+    }
+    if (t.dataset.objdel !== undefined) { const arr = clone(getPath(S.draft, t.dataset.path)); arr.splice(+t.dataset.objdel, 1); setVal(t.dataset.path, arr); rerenderKeepScroll(); return; }
+    if (t.hasAttribute("data-objadd")) {
+      const f = CONFIG_SECTIONS.flatMap(s => s[3]).find(x => x.p === t.dataset.path);
+      const arr = clone(getPath(S.draft, t.dataset.path)) || [];
+      arr.push(clone(f.template) || Object.fromEntries(f.cols.map(c => [c.k, ""]))); setVal(t.dataset.path, arr); rerenderKeepScroll(); return;
+    }
+    const act = t.dataset.act; if (!act) return;
+    if (act === "resume") return doPause(null);
+    if (act === "saveUrl") { const url = location.origin + location.pathname; setVal("dashboard.url", url); if (await save(null, "settings: 대시보드 주소 등록")) { toast("저장했어요"); render(); } return; }
+    if (RUN_ACTIONS[act]) return RUN_ACTIONS[act](t);
+  };
+}
+function addChip(el){
+  const box = el.closest(".chips"), path = box.dataset.path, max = +box.dataset.max || 0;
+  let val = el.value.trim().replace(/^#/, ""); if (box.dataset.type === "chips" && val === "" ) return;
+  const arr = clone(getPath(S.draft, path)) || [];
+  if (val && !arr.includes(val) && (!max || arr.length < max)) {
+    arr.push(val); if (box.dataset.type === "times") arr.sort(); setVal(path, arr); rerenderKeepScroll(path);
+  } else el.value = "";
+}
+function rerenderKeepScroll(focusPath){
+  const y = window.scrollY; render(); window.scrollTo(0, y);
+  if (focusPath) { const i = document.querySelector(`.chips[data-path="${focusPath}"] [data-chipin]`); if (i) i.focus(); }
+}
+
+/* ================================================================ 대기열 */
+function viewQueue(){
+  const packs = S.status.packs || [];
+  let html = `<h2>인스타 대기열</h2><p class="lead">승인·표지 선택·캡션 수정은 텔레그램에서 해요. 여기서는 예약과 게시 결과를 한눈에 봐요.</p>`;
+  if (!packs.length) return html + `<div class="card empty">아직 만들어진 인스타 패키지가 없어요.</div>`;
+  const groups = [["승인 대기", packs.filter(p => p.status === "pending")], ["예약됨", packs.filter(p => p.status === "approved")],
+                  ["지난 게시물", packs.filter(p => !["pending","approved"].includes(p.status))]];
+  for (const [title, list] of groups) {
+    if (!list.length) continue;
+    html += `<div class="card" style="margin-bottom:14px"><h3>${title} <span class="muted small">${list.length}</span></h3><div class="list">` + list.map(p => {
+      const [sl, sc] = STATUS_LABEL[p.status] || [p.status, ""];
+      const lines = (p.targets || []).map(t => { const r = (p.results || {})[t], at = (p.schedule || {})[t];
+        return r ? `${TARGET_LABEL[t]} ${r.permalink ? `<a href="${esc(r.permalink)}" target="_blank" rel="noopener">게시됨 ↗</a>` : "게시됨"} ${fmtKST(r.at)}`
+                 : `${TARGET_LABEL[t]} ${at ? fmtKST(at) + " 예정" : ""}`; });
+      const errs = Object.entries(p.errors || {}).filter(([k]) => k !== "expired");
+      return `<div class="li"><div class="main"><div class="t">${esc(p.title)}</div>
+        <div class="row" style="flex-wrap:wrap;gap:6px;margin-top:5px"><span class="pill ${sc}">${sl}</span><span class="pill">${FORMAT_LABEL[p.fmt] || p.fmt}</span>
+        ${p.sponsor ? `<span class="pill warn">광고 · ${esc(p.sponsor)}</span>` : ""}${p.threads ? `<span class="pill">스레드 게시됨</span>` : ""}</div>
+        ${lines.length ? `<div class="small muted" style="margin-top:5px">${lines.join(" · ")}</div>` : ""}
+        ${errs.length ? `<div class="small" style="color:var(--bad);margin-top:4px">${errs.map(([k, v]) => `${TARGET_LABEL[k] || k}: ${esc(v)}`).join("<br>")}</div>` : ""}
+        <div class="small muted" style="margin-top:3px">생성 ${fmtKST(p.created_at)}</div></div></div>`;
+    }).join("") + `</div></div>`;
+  }
+  return html;
+}
+
+/* ================================================================ 성과 */
+function postRows(){
+  return Object.entries(S.insights.posts || {}).map(([k, p]) => ({k, ...p, m:p.metrics || {}}))
+    .filter(p => p.at).sort((a, b) => b.at.localeCompare(a.at));
+}
+function viewStats(){
+  const posts = postRows(), fol = (S.insights.followers || []).slice().sort((a, b) => a.at.localeCompare(b.at));
+  let html = `<h2>성과</h2><p class="lead">매주 월요일 주간 리포트가 인스타 통계를 모아요. 티스토리·네이버는 통계 API가 없어 각 관리 화면에서 확인해 주세요.</p>`;
+  if (!posts.length && !fol.length) return html + `<div class="card empty">아직 통계가 없어요. 인스타 게시 후 첫 주간 리포트(월요일 09:10)부터 채워져요.</div>`;
+  const recent = posts.filter(p => Date.now() - new Date(p.at) < 30 * 86400000);
+  const avg = k => recent.length ? Math.round(recent.reduce((s, p) => s + (p.m[k] || 0), 0) / recent.length) : 0;
+  const last = fol[fol.length - 1], prev = fol.find(f => Date.now() - new Date(f.at) < 35 * 86400000);
+  html += `<div class="grid g3" style="margin-bottom:14px">
+    <div class="card stat"><div class="k">팔로워</div><div class="v">${last ? last.count.toLocaleString() : "–"}</div><div class="s">${last && prev && prev !== last ? `최근 한 달 ${last.count - prev.count >= 0 ? "+" : ""}${(last.count - prev.count).toLocaleString()}` : "추이는 2주 차부터"}</div></div>
+    <div class="card stat"><div class="k">게시물당 평균 저장 (30일)</div><div class="v">${avg("saved").toLocaleString()}</div><div class="s">공유 평균 ${avg("shares").toLocaleString()}</div></div>
+    <div class="card stat"><div class="k">게시물당 평균 도달 (30일)</div><div class="v">${avg("reach").toLocaleString()}</div><div class="s">게시물 ${recent.length}개 기준</div></div></div>`;
+  html += `<div class="grid g2" style="margin-bottom:14px">
+    <div class="card"><h3>팔로워 추이</h3><div class="chart" id="chFol"></div></div>
+    <div class="card"><h3>포맷별 평균 저장 (30일)</h3><div class="chart" id="chFmt"></div></div></div>`;
+  const top = recent.slice().sort((a, b) => ((b.m.saved||0)*3 + (b.m.shares||0)*3 + (b.m.reach||0)/100) - ((a.m.saved||0)*3 + (a.m.shares||0)*3 + (a.m.reach||0)/100)).slice(0, 10);
+  html += `<div class="card"><h3>반응 좋은 게시물 (30일)</h3>${top.length ? `<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>게시물</th><th>포맷</th><th class="num">저장</th><th class="num">공유</th><th class="num">도달</th></tr></thead><tbody>` +
+    top.map(p => `<tr><td>${p.permalink ? `<a href="${esc(p.permalink)}" target="_blank" rel="noopener" style="color:var(--text)">${esc(p.title)}</a>` : esc(p.title)}<div class="small muted">${fmtKST(p.at, {month:"2-digit", day:"2-digit"})} · ${TARGET_LABEL[p.target] || ""}</div></td><td>${FORMAT_LABEL[p.fmt] || esc(p.fmt)}</td><td class="num">${(p.m.saved||0).toLocaleString()}</td><td class="num">${(p.m.shares||0).toLocaleString()}</td><td class="num">${(p.m.reach||0).toLocaleString()}</td></tr>`).join("") +
+    `</tbody></table></div>` : `<div class="empty">최근 30일 게시물이 없어요.</div>`}</div>`;
+  return html;
+}
+function drawCharts(){
+  const fol = (S.insights.followers || []).slice().sort((a, b) => a.at.localeCompare(b.at));
+  const fEl = $("#chFol"), mEl = $("#chFmt");
+  if (fEl) fEl.innerHTML = fol.length >= 2 ? lineChart(fol.map(f => ({x:new Date(f.at), y:f.count, label:`${fmtKST(f.at, {month:"2-digit", day:"2-digit"})} · ${f.count.toLocaleString()}명`}))) : `<div class="empty">2주 이상 쌓이면 그래프가 보여요.</div>`;
+  if (mEl) {
+    const recent = postRows().filter(p => Date.now() - new Date(p.at) < 30 * 86400000), by = {};
+    recent.forEach(p => { (by[p.fmt] = by[p.fmt] || []).push(p.m.saved || 0); });
+    const bars = Object.keys(FORMAT_LABEL).filter(k => by[k]).map(k => ({label:FORMAT_LABEL[k], v:Math.round(by[k].reduce((a, b) => a + b, 0) / by[k].length), n:by[k].length}));
+    mEl.innerHTML = bars.length ? barChart(bars) : `<div class="empty">최근 30일 게시물이 없어요.</div>`;
+  }
+  document.querySelectorAll(".chart").forEach(bindChartHover);
+}
+function niceMax(v){ if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p; return 10 * p; }
+function lineChart(pts){
+  const W = 560, H = 220, L = 46, R = 12, T = 12, B = 28;
+  const ys = pts.map(p => p.y), lo = Math.min(...ys), hi = Math.max(...ys);
+  const step = niceMax(Math.max(1, (hi - lo) / 4)), y0 = Math.max(0, Math.floor(lo / step) * step), y1 = Math.max(y0 + step, Math.ceil(hi / step) * step);
+  const x0 = +pts[0].x, x1 = +pts[pts.length - 1].x || x0 + 1;
+  const X = d => L + (W - L - R) * ((+d - x0) / Math.max(1, x1 - x0)), Y = v => T + (H - T - B) * (1 - (v - y0) / Math.max(1, y1 - y0));
+  const ticks = []; for (let t = y0; t <= y1 + 1e-9; t += step) ticks.push(Math.round(t));
+  const path = pts.map((p, i) => `${i ? "L" : "M"}${X(p.x).toFixed(1)},${Y(p.y).toFixed(1)}`).join("");
+  const xl = [pts[0], pts[Math.floor(pts.length / 2)], pts[pts.length - 1]];
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="팔로워 추이">
+    ${ticks.map(t => `<line x1="${L}" x2="${W - R}" y1="${Y(t)}" y2="${Y(t)}" stroke="#262626" stroke-width="1"/><text x="${L - 8}" y="${Y(t) + 4}" fill="#7A7A7A" font-size="11" text-anchor="end">${t.toLocaleString()}</text>`).join("")}
+    ${xl.map(p => `<text x="${X(p.x)}" y="${H - 8}" fill="#7A7A7A" font-size="11" text-anchor="middle">${fmtKST(p.x.toISOString(), {month:"numeric", day:"numeric"})}</text>`).join("")}
+    <path d="${path}" fill="none" stroke="#C6FF3D" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <line class="xh" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="#7A7A7A" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>
+    <circle class="dot" r="5" fill="#C6FF3D" stroke="#141414" stroke-width="2" opacity="0"/>
+    <rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent" data-pts='${esc(JSON.stringify(pts.map(p => [X(p.x), Y(p.y), p.label])))}' data-kind="line"/>
+  </svg><div class="tip"></div>`;
+}
+function barChart(bars){
+  const W = 560, H = 220, L = 40, R = 12, T = 14, B = 30, max = niceMax(Math.max(...bars.map(b => b.v)));
+  const bw = Math.min(64, (W - L - R) / bars.length * 0.5), step = (W - L - R) / bars.length;
+  const Y = v => T + (H - T - B) * (1 - v / max), ticks = [0, .5, 1].map(f => max * f);
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="포맷별 평균 저장">
+    ${ticks.map(t => `<line x1="${L}" x2="${W - R}" y1="${Y(t)}" y2="${Y(t)}" stroke="#262626"/><text x="${L - 8}" y="${Y(t) + 4}" fill="#7A7A7A" font-size="11" text-anchor="end">${Math.round(t)}</text>`).join("")}
+    ${bars.map((b, i) => { const cx = L + step * i + step / 2, y = Y(b.v), h = Math.max(0, H - B - y), r = Math.min(4, h);
+      return `<g data-tipx="${cx}" data-tipy="${y}" data-tip="${esc(`${b.label} · 평균 저장 ${b.v} (게시물 ${b.n}개)`)}">
+        <rect x="${cx - step / 2}" y="${T}" width="${step}" height="${H - T - B}" fill="transparent"/>
+        <path d="M${cx - bw / 2},${H - B} V${y + r} Q${cx - bw / 2},${y} ${cx - bw / 2 + r},${y} H${cx + bw / 2 - r} Q${cx + bw / 2},${y} ${cx + bw / 2},${y + r} V${H - B} Z" fill="#C6FF3D"/>
+        <text x="${cx}" y="${y - 6}" fill="#F5F5F5" font-size="12" font-weight="700" text-anchor="middle">${b.v}</text>
+        <text x="${cx}" y="${H - 9}" fill="#B8B8B8" font-size="12" text-anchor="middle">${esc(b.label)}</text></g>`; }).join("")}
+  </svg><div class="tip"></div>`;
+}
+function bindChartHover(box){
+  const svg = box.querySelector("svg"), tip = box.querySelector(".tip"); if (!svg || !tip) return;
+  const toPx = (x, y) => { const r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal; return [x * r.width / vb.width, y * r.height / vb.height]; };
+  const hit = svg.querySelector('[data-kind="line"]');
+  if (hit) {
+    const pts = JSON.parse(hit.dataset.pts), xh = svg.querySelector(".xh"), dot = svg.querySelector(".dot");
+    const move = e => { const r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal, ex = (e.clientX - r.left) * vb.width / r.width;
+      const p = pts.reduce((a, b) => Math.abs(b[0] - ex) < Math.abs(a[0] - ex) ? b : a);
+      xh.setAttribute("x1", p[0]); xh.setAttribute("x2", p[0]); xh.setAttribute("opacity", 1);
+      dot.setAttribute("cx", p[0]); dot.setAttribute("cy", p[1]); dot.setAttribute("opacity", 1);
+      const [px, py] = toPx(p[0], p[1]); tip.textContent = p[2]; tip.style.left = px + "px"; tip.style.top = py + "px"; tip.style.opacity = 1; };
+    hit.addEventListener("pointermove", move); hit.addEventListener("pointerdown", move);
+    hit.addEventListener("pointerleave", () => { xh.setAttribute("opacity", 0); dot.setAttribute("opacity", 0); tip.style.opacity = 0; });
+  }
+  svg.querySelectorAll("[data-tip]").forEach(g => {
+    g.addEventListener("pointerenter", () => { const [px, py] = toPx(+g.dataset.tipx, +g.dataset.tipy); tip.textContent = g.dataset.tip; tip.style.left = px + "px"; tip.style.top = py + "px"; tip.style.opacity = 1; });
+    g.addEventListener("pointerleave", () => tip.style.opacity = 0);
+  });
+}
+
+/* ================================================================ 실행 */
+function viewRun(){
+  const paused = getPath(S.eff, "control.paused_until"), pausedOn = paused && new Date(paused) > new Date();
+  const fmtOpts = `<option value="">요일별 기본</option>` + Object.entries(FORMAT_LABEL).map(([k, t]) => `<option value="${k}">${t}</option>`).join("");
+  return `<h2>실행</h2><p class="lead">버튼을 누르면 GitHub Actions가 실행돼요. 결과는 평소처럼 텔레그램으로 와요 (보통 5~10분).</p>
+  <div class="grid g2">
+    <div class="card"><h3>지금 콘텐츠 만들기</h3>
+      <div class="field"><label for="rOnly">대상</label><select id="rOnly"><option value="">전체 (티스토리 + 인스타·네이버)</option><option value="tistory">티스토리만</option><option value="sns">인스타·네이버만</option></select></div>
+      <div class="field"><label for="rFmt">SNS 포맷</label><select id="rFmt">${fmtOpts}</select></div>
+      <div class="field inline"><div><label for="rDry">시험 실행</label><div class="help">발행·전송 없이 결과 파일만 (Actions › 실행 › Artifacts)</div></div><label class="switch"><input id="rDry" type="checkbox"><span></span></label></div>
+      <button class="btn primary" style="width:100%;margin-top:16px" data-act="runDaily">실행</button></div>
+    <div class="card"><h3>링크로 만들기</h3><div class="small muted">내가 고른 공식 발표 하나로 인스타·네이버 패키지 (텔레그램 /topic)</div>
+      <div class="field"><label for="tUrl">공식 발표 링크</label><input id="tUrl" placeholder="https://" spellcheck="false"></div>
+      <div class="field"><label for="tFmt">포맷</label><select id="tFmt">${fmtOpts.replace("요일별 기본", "뉴스 해설 (기본)")}</select></div>
+      <button class="btn primary" style="width:100%;margin-top:16px" data-act="runTopic">만들기</button></div>
+    <div class="card"><h3>협찬 콘텐츠</h3><div class="small muted">캡션 첫 줄·네이버 상단에 [광고] 표기, 해시태그 첫 자리 #광고 자동 (텔레그램 /sponsor)</div>
+      <div class="field"><label for="sUrl">제품 공식 링크</label><input id="sUrl" placeholder="https://" spellcheck="false"></div>
+      <div class="field"><label for="sBrand">브랜드명</label><input id="sBrand" placeholder="예: 브랜드X"></div>
+      <button class="btn primary" style="width:100%;margin-top:16px" data-act="runSponsor">만들기</button></div>
+    <div class="card"><h3>기타</h3>
+      <div class="li" style="border:none;padding-top:0"><div class="main"><div class="t">승인 처리 지금 돌리기</div><div class="small muted">텔레그램 버튼 반응을 30분 기다리기 싫을 때</div></div><button class="btn sm" data-act="runApprove">실행</button></div>
+      <div class="li"><div class="main"><div class="t">주간 리포트 지금 받기</div><div class="small muted">성과·운영 상태 리포트를 텔레그램으로</div></div><button class="btn sm" data-act="runWeekly">실행</button></div>
+      <div class="li"><div class="main"><div class="t">자동 생성 ${pausedOn ? "멈춤 중" : "일시정지"}</div><div class="small muted">${pausedOn ? `${fmtKST(paused)}까지 멈춤 · 승인한 게시는 진행` : "휴가·점검 때. 승인한 인스타 게시는 예정대로 진행"}</div></div>
+        ${pausedOn ? `<button class="btn primary sm" data-act="resume">재개</button>` : `<select id="pDays" style="width:auto;padding:6px 8px"><option value="1">1일</option><option value="3" selected>3일</option><option value="7">7일</option><option value="14">14일</option></select><button class="btn sm" data-act="pause">멈춤</button>`}</div>
+    </div>
+  </div>`;
+}
+async function doPause(days){
+  if (S.dirty.size && !await confirmBox("저장하지 않은 변경이 있어요", "일시정지 설정과 함께 지금까지의 변경도 저장돼요.", "같이 저장")) return;
+  const until = days ? new Date(Date.now() + days * 86400000).toISOString().slice(0, 19) + "+00:00" : null;
+  if (await save({"control.paused_until": until}, days ? `settings: ${days}일 일시정지` : "settings: 자동 생성 재개")) {
+    toast(days ? `${days}일간 자동 생성을 멈춰요` : "자동 생성을 다시 시작해요"); render();
+  }
+}
+const RUN_ACTIONS = {
+  runDaily: async () => { const dry = $("#rDry").checked;
+    if (!dry && !await confirmBox("지금 실제로 만들까요?", "티스토리 자동 발행과 텔레그램 전송이 진행돼요. 결과만 보려면 '시험 실행'을 켜세요.", "실행")) return;
+    dispatch("daily.yml", {only:$("#rOnly").value, format:$("#rFmt").value, dry_run: dry ? "true" : "false", topic_url:"", sponsor_brand:""}); },
+  runTopic: () => { const u = $("#tUrl").value.trim(); if (!/^https?:\/\//.test(u)) return toast("링크를 https:// 로 시작하게 입력해 주세요", true);
+    dispatch("daily.yml", {only:"sns", format:$("#tFmt").value, dry_run:"false", topic_url:u, sponsor_brand:""}); },
+  runSponsor: () => { const u = $("#sUrl").value.trim(), b = $("#sBrand").value.trim();
+    if (!/^https?:\/\//.test(u) || !b) return toast("제품 링크와 브랜드명을 모두 입력해 주세요", true);
+    dispatch("daily.yml", {only:"sns", format:"", dry_run:"false", topic_url:u, sponsor_brand:b}); },
+  runApprove: () => dispatch("approve.yml"),
+  runWeekly: () => dispatch("weekly.yml"),
+  pause: () => doPause(+$("#pDays").value),
+};
+
+/* ================================================================ 시작 */
+(async function init(){
+  route();
+  const token = store.get("kd_token"), repo = store.get("kd_repo");
+  if (token && repo) {
+    $("#app").classList.remove("hidden");
+    try { await connect(repo, token, !!(function(){ try { return localStorage.getItem("kd_token"); } catch { return null; } })()); }
+    catch (e) { showLogin(explain(e)); }
+  } else showLogin();
+})();
+</script>
+</body>
+</html>
