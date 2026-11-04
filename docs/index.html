@@ -328,6 +328,21 @@ const CONFIG_SECTIONS = [
     {p:"formats.series_labels.roundup", label:"시리즈명 · 모음", type:"text"},
     {p:"tistory.thumbnail_label", label:"블로그 대표 이미지 상단 문구", type:"text"},
   ]],
+  ["design","카드·릴스","카드뉴스 디자인과 릴스 읽어주기 음성",[
+    {p:"cardnews.design", label:"카드 디자인", type:"select", options:[["v2","새 디자인 (표지 전용·장 유형별)"],["classic","예전 글자형"]]},
+    {p:"cardnews.cover_image", label:"표지에 원문 대표 이미지 넣기", type:"toggle", help:"공식 페이지의 공유용 대표 이미지(GitHub는 저장소 미리보기)를 쓰고 '이미지: 출처'를 표기해요. 못 가져오면 글자 표지로"},
+    {p:"cardnews.reels.enabled", label:"릴스 영상 만들기", type:"toggle"},
+    {p:"cardnews.reels.tts.enabled", label:"릴스 읽어주기 음성", type:"toggle", help:"Secrets 에 GOOGLE_TTS_API_KEY 가 있어야 동작 (README '릴스 음성')"},
+    {p:"cardnews.reels.tts.voice", label:"목소리", type:"select", options:[
+      ["ko-KR-Chirp3-HD-Kore","Kore · 여성 (기본)"],["ko-KR-Chirp3-HD-Aoede","Aoede · 여성"],["ko-KR-Chirp3-HD-Leda","Leda · 여성"],
+      ["ko-KR-Chirp3-HD-Zephyr","Zephyr · 여성"],["ko-KR-Chirp3-HD-Charon","Charon · 남성"],["ko-KR-Chirp3-HD-Puck","Puck · 남성"],
+      ["ko-KR-Chirp3-HD-Fenrir","Fenrir · 남성"],["ko-KR-Chirp3-HD-Orus","Orus · 남성"],["ko-KR-Neural2-C","Neural2-C · 남성 (기본형)"]],
+     help:"안 되는 목소리면 자동으로 다른 한국어 목소리로 바꿔 읽어요"},
+    {p:"cardnews.reels.tts.speaking_rate", label:"말 빠르기 (1.0 = 보통)", type:"number", min:0.7, max:1.5, step:0.02},
+    {p:"cardnews.reels.subtitles", label:"자막 넣기", type:"toggle", help:"소리 끄고 보는 사람이 많아서 켜 두는 걸 권장"},
+    {p:"cardnews.reels.bgm_volume_under_voice", label:"음성 있을 때 배경음 크기 (0~1)", type:"number", min:0, max:1, step:0.01, help:"배경음 파일은 저장소 assets/bgm 폴더에 (README 참고)"},
+    {p:"cardnews.reels.tts.caption_note", label:"캡션 AI 음성 안내", type:"text", help:"비우면 안 붙어요"},
+  ]],
   ["money","수익화","문의 안내, 제휴 링크, 고지 문구",[
     {p:"monetization.contact_cta", label:"블로그·네이버 하단 문의 안내", type:"textarea", help:"오픈카톡 링크를 꼭 실제 주소로 바꿔 주세요"},
     {p:"monetization.contact_cta_insta", label:"인스타 캡션 하단 문의 안내", type:"text"},
@@ -489,7 +504,8 @@ async function writeSettings(data, sha, message){
 }
 function explain(e){
   if (e.status === 401) return "토큰이 올바르지 않거나 만료됐어요. 다시 로그인해 주세요.";
-  if (e.status === 403) return "권한이 부족해요. 토큰에 Contents·Actions 'Read and write' 권한이 있는지 확인해 주세요.";
+  if (e.status === 403) return "권한이 부족해요. 대시보드에 넣은 토큰에 Contents·Actions 'Read and write' 권한이 있는지 확인해 주세요."
+      + (e.message && e.message !== "Forbidden" ? ` (GitHub: ${e.message})` : "");
   if (e.status === 404) return "저장소를 찾을 수 없어요. 이름과 토큰의 저장소 접근 범위를 확인해 주세요.";
   if (e.status === 409 || e.status === 422) return "다른 곳(텔레그램 등)에서 방금 설정이 바뀌었어요. 다시 시도해 주세요.";
   return e.message || "알 수 없는 오류";
@@ -625,12 +641,19 @@ function setupItems(){
     items.push({done: !miss.length, t:"필수 Secrets 등록", s: miss.length ? "미등록: " + miss.map(m => m[1]).join(", ") : "모두 등록됨",
                 href:`https://github.com/${S.repo}/settings/secrets/actions`});
     const imiss = INSTA_SECRETS.filter(([n]) => !present[n]);
+    items.push({done: !!present.GOOGLE_TTS_API_KEY, opt:true, t:"릴스 읽어주기 음성 키", s: present.GOOGLE_TTS_API_KEY ? "등록됨" : "GOOGLE_TTS_API_KEY 미등록 — 없으면 무음 릴스 (README '릴스 음성')",
+                href:`https://github.com/${S.repo}/settings/secrets/actions`});
     items.push({done: !imiss.length, opt:true, t:"인스타 자동 게시 Secrets", s: imiss.length ? "미등록: " + imiss.map(m => m[1]).join(", ") : "모두 등록됨",
                 href:`https://github.com/${S.repo}/settings/secrets/actions`});
   } else {
     items.push({done:false, t:"Secrets 등록 확인", s:"시험 실행을 한 번 돌리면 등록 여부가 여기 자동으로 표시돼요", href:`https://github.com/${S.repo}/settings/secrets/actions`});
   }
   items.push({done: S.runs.some(r => r.path && r.path.endsWith("daily.yml")), t:"첫 시험 실행", s:"발행·전송 없이 결과만 만들어 보기", go:"#run"});
+  const ar = S.state.approve_last_run, kh = (new Date().getUTCHours() + 9) % 24, quiet = kh < 8;
+  const fresh = ar && (Date.now() - new Date(ar)) < (quiet ? 10 : 2) * 3600000;
+  items.push({done: !!fresh, t:"외부 예약 연결 (cron-job.org)",
+              s: ar ? `승인 처리 마지막 실행 ${ago(ar)}${fresh ? "" : " — 30분마다 돌아야 해요. cron-job.org 작업을 확인해 주세요"}` : "승인 처리가 30분마다 자동으로 돌게 (README '외부 예약')",
+              href:`https://github.com/${S.repo}#외부-예약-cron-joborg`});
   items.push({done: !!getPath(c, "dashboard.url"), opt:true, t:"대시보드 주소 저장", s:"텔레그램 /status 에 이 화면 링크 표시", action:"saveUrl"});
   return items;
 }
@@ -777,7 +800,7 @@ function fieldHTML(f){
       return `<div class="field">${lab}<select ${attrs}>${models.map(m => `<option ${v === m ? "selected" : ""}>${esc(m)}</option>`).join("")}</select>${help}</div>`;
     }
     case "number":
-      return `<div class="field">${lab}<input type="number" inputmode="numeric" ${attrs} value="${esc(v)}" min="${f.min ?? ""}" max="${f.max ?? ""}">${help}</div>`;
+      return `<div class="field">${lab}<input type="number" inputmode="decimal" step="${f.step ?? "any"}" ${attrs} value="${esc(v)}" min="${f.min ?? ""}" max="${f.max ?? ""}">${help}</div>`;
     case "time":
       return `<div class="field">${lab}<input type="time" ${attrs} value="${esc(v)}">${help}</div>`;
     case "textarea":
