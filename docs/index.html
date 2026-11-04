@@ -340,7 +340,9 @@ const CONFIG_SECTIONS = [
      help:"안 되는 목소리면 자동으로 다른 한국어 목소리로 바꿔 읽어요"},
     {p:"cardnews.reels.tts.speaking_rate", label:"말 빠르기 (1.0 = 보통)", type:"number", min:0.7, max:1.5, step:0.02},
     {p:"cardnews.reels.subtitles", label:"자막 넣기", type:"toggle", help:"소리 끄고 보는 사람이 많아서 켜 두는 걸 권장"},
-    {p:"cardnews.reels.bgm_volume_under_voice", label:"음성 있을 때 배경음 크기 (0~1)", type:"number", min:0, max:1, step:0.01, help:"배경음 파일은 저장소 assets/bgm 폴더에 (README 참고)"},
+    {p:"cardnews.reels.bgm_volume_under_voice", label:"음성 있을 때 배경음 크기 (0~1)", type:"number", min:0, max:1, step:0.01, help:"배경음 파일은 저장소 assets/bgm 폴더에 (README 참고). 0.15 작게 · 0.22 기본 · 0.3 크게"},
+    {p:"cardnews.reels.ducking", label:"말할 때 배경음 줄이기", type:"toggle", help:"끄면 위 크기로 일정하게 깔려요 (그땐 0.15~0.2 권장)"},
+    {p:"cardnews.reels.ducking_amount", label:"줄이는 정도 (0~1)", type:"number", min:0, max:1, step:0.05, help:"0.2 살짝 · 0.4 기본 · 0.7 확실히. 천천히 줄고 말이 끝나면 부드럽게 돌아와요"},
     {p:"cardnews.reels.tts.caption_note", label:"캡션 AI 음성 안내", type:"text", help:"비우면 안 붙어요"},
   ]],
   ["money","수익화","문의 안내, 제휴 링크, 고지 문구",[
@@ -933,6 +935,7 @@ function tistoryQueueCard(){
     return `<div class="li"><div class="main"><div class="t">${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener" style="color:var(--text)">${esc(d.title)} ↗</a>` : esc(d.title)}</div>
       <div class="row" style="flex-wrap:wrap;gap:6px;margin-top:5px"><span class="pill ${c}">${l}</span><span class="pill">${esc(d.visibility)}</span>${d.comment ? `<span class="pill acc">💬 코멘트</span>` : ""}</div>
       <div class="small muted" style="margin-top:5px">${d.status === "queued" ? `${fmtKST(d.publish_at)} 이후 발행 · 텔레그램 메시지에 답장하면 코멘트가 들어가요` : `생성 ${fmtKST(d.created_at)}`}</div>
+      ${d.status === "queued" ? `<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="tqNow" data-id="${esc(d.id)}">🚀 지금 발행</button><span class="small muted">3~5분 뒤 올라가요 (코멘트는 그 전에 단 것까지 반영)</span></div>` : ""}
       ${d.comment ? `<div class="small" style="margin-top:4px;color:var(--text2)">“${esc(d.comment)}”</div>` : ""}
       ${d.error ? `<div class="small" style="color:var(--bad);margin-top:4px">${esc(d.error)}</div>` : ""}</div></div>`;
   }).join("") + `</div></div>`;
@@ -1170,6 +1173,7 @@ const RUN_ACTIONS = {
     if (!/^https?:\/\//.test(u) || !b) return toast("제품 링크와 브랜드명을 모두 입력해 주세요", true);
     dispatch("daily.yml", {only:"sns", format:"", dry_run:"false", topic_url:u, sponsor_brand:b}); },
   runApprove: () => dispatch("approve.yml"),
+  tqNow: el => dispatch("tistory-publish.yml", {now_id: el.dataset.id}),
   suggestReply: () => suggestReply(),
   copyAbout: async () => { try { await navigator.clipboard.writeText(aboutText()); toast("소개 페이지 초안을 복사했어요"); } catch { toast("복사가 막혔어요", true); } },
   copyPrivacy: async () => { try { await navigator.clipboard.writeText(privacyText()); toast("개인정보처리방침 초안을 복사했어요"); } catch { toast("복사가 막혔어요", true); } },
