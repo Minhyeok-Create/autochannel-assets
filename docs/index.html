@@ -710,7 +710,7 @@ function viewHome(){
   const rows = [["인스타 토큰", exp.IG_ACCESS_TOKEN], ["이미지 저장소 토큰 (ASSETS_TOKEN)", exp.ASSETS_TOKEN], ["자동 갱신·명령 토큰 (GH_PAT)", exp.GH_PAT]];
   html += `<div class="card" style="margin-top:14px"><h3>만료 일정</h3><div class="list">` + rows.map(([n, v]) => { const d = dday(v);
       return `<div class="li"><div class="main">${n}</div><span class="pill ${d.cls}">${d.txt}</span></div>`; }).join("") +
-    `<div class="li"><div class="main">티스토리 로그인 세션</div><span class="pill">${h.tistory_saved_at ? `저장 후 ${Math.floor((Date.now() - new Date(h.tistory_saved_at)) / 86400000)}일` : "확인 불가"}</span></div>` +
+    `<div class="li"><div class="main">티스토리 로그인 세션</div><span class="pill">${h.tistory_refreshed_at ? `자동 갱신 ${Math.floor((Date.now() - new Date(h.tistory_refreshed_at)) / 86400000)}일 전` : h.tistory_saved_at ? `저장 후 ${Math.floor((Date.now() - new Date(h.tistory_saved_at)) / 86400000)}일` : "확인 불가"}</span></div>` +
     `</div><p class="small muted" style="margin:10px 0 0">${h.at ? `기준: ${fmtKST(h.at)} 실행.` : "일일 실행 후 표시돼요."} 만료되면 텔레그램으로도 알려드려요.</p></div>`;
   return html;
 }
