@@ -936,6 +936,7 @@ function tistoryQueueCard(){
       <div class="row" style="flex-wrap:wrap;gap:6px;margin-top:5px"><span class="pill ${c}">${l}</span><span class="pill">${esc(d.visibility)}</span>${d.comment ? `<span class="pill acc">💬 코멘트</span>` : ""}</div>
       <div class="small muted" style="margin-top:5px">${d.status === "queued" ? `${fmtKST(d.publish_at)} 이후 발행 · 텔레그램 메시지에 답장하면 코멘트가 들어가요` : `생성 ${fmtKST(d.created_at)}`}</div>
       ${d.status === "queued" ? `<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="tqNow" data-id="${esc(d.id)}">🚀 지금 발행</button><span class="small muted">3~5분 뒤 올라가요 (코멘트는 그 전에 단 것까지 반영)</span></div>` : ""}
+      ${d.status === "failed" ? `<div class="row" style="margin-top:8px"><button class="btn sm" data-act="tqNow" data-id="${esc(d.id)}">🔁 다시 발행</button><span class="small muted">이미 직접 올렸다면 누르지 마세요 (중복 글)</span></div>` : ""}
       ${d.comment ? `<div class="small" style="margin-top:4px;color:var(--text2)">“${esc(d.comment)}”</div>` : ""}
       ${d.error ? `<div class="small" style="color:var(--bad);margin-top:4px">${esc(d.error)}</div>` : ""}</div></div>`;
   }).join("") + `</div></div>`;
