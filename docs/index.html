@@ -644,10 +644,12 @@ function setupItems(){
     const miss = REQUIRED_SECRETS.filter(([n]) => !present[n]);
     items.push({done: !miss.length, t:"필수 Secrets 등록", s: miss.length ? "미등록: " + miss.map(m => m[1]).join(", ") : "모두 등록됨",
                 href:`https://github.com/${S.repo}/settings/secrets/actions`});
-    const imiss = INSTA_SECRETS.filter(([n]) => !present[n]);
+    // 인스타: 공식 토큰(IG_ACCESS_TOKEN·IG_USER_ID) 또는 Make 웹훅(MAKE_WEBHOOK_URL) 중 하나면 됨
+    const viaMake = present.MAKE_WEBHOOK_URL && !present.IG_ACCESS_TOKEN;
+    const imiss = INSTA_SECRETS.filter(([n]) => !present[n] && !(viaMake && (n === "IG_ACCESS_TOKEN" || n === "IG_USER_ID")));
     items.push({done: !!present.GOOGLE_TTS_API_KEY, opt:true, t:"릴스 읽어주기 음성 키", s: present.GOOGLE_TTS_API_KEY ? "등록됨" : "GOOGLE_TTS_API_KEY 미등록 — 없으면 무음 릴스 (README '릴스 음성')",
                 href:`https://github.com/${S.repo}/settings/secrets/actions`});
-    items.push({done: !imiss.length, opt:true, t:"인스타 자동 게시 Secrets", s: imiss.length ? "미등록: " + imiss.map(m => m[1]).join(", ") : "모두 등록됨",
+    items.push({done: !imiss.length, opt:true, t:"인스타 자동 게시 Secrets", s: imiss.length ? "미등록: " + imiss.map(m => m[1]).join(", ") + " (개발자 등록이 막히면 MAKE_WEBHOOK_URL 로 대신 — README 'Make 로 인스타 게시')" : viaMake ? "Make 로 게시" : "모두 등록됨",
                 href:`https://github.com/${S.repo}/settings/secrets/actions`});
   } else {
     items.push({done:false, t:"Secrets 등록 확인", s:"시험 실행을 한 번 돌리면 등록 여부가 여기 자동으로 표시돼요", href:`https://github.com/${S.repo}/settings/secrets/actions`});
