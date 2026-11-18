@@ -228,7 +228,7 @@ h3{font-size:16px;margin:0 0 10px;letter-spacing:-.01em}
 /* ================================================================ 상수 */
 const TZ = "Asia/Seoul";
 const API = "https://api.github.com";
-const FORMAT_LABEL = {explainer:"뉴스 해설", spotlight:"툴 소개", roundup:"모음"};
+const FORMAT_LABEL = {explainer:"뉴스 해설", spotlight:"툴 소개", roundup:"모음", toon:"칼퇴툰"};
 const DAYS = ["월","화","수","목","금","토","일"];
 const STATUS_LABEL = {pending:["승인 대기","warn"], approved:["예약됨","acc"], done:["게시 완료","good"], skipped:["건너뜀",""], expired:["만료",""]};
 const TARGET_LABEL = {carousel:"캐러셀", reel:"릴스", reels:"릴스"};
@@ -273,6 +273,8 @@ const FEATURES = [
   {id:"approval_reminder", name:"승인 알림", when:"처음부터", needs:"없음",
    desc:"정해진 시각까지 승인 안 한 인스타 패키지가 있으면 텔레그램으로 한 번 알려줘요.",
    opts:[{k:"at", label:"알림 시각", type:"time"}]},
+  {id:"naver_post", name:"네이버 블로그 원고", when:"올릴 때만", needs:"없음",
+   desc:"SNS 패키지에 네이버 블로그 제목·본문 원고를 같이 만들어 텔레그램으로 보내요. 네이버를 안 올리는 동안은 꺼 두면 원고 작성·검수에 드는 Claude 비용이 줄어요."},
   {id:"naver_check", name:"네이버 발행 체크", when:"처음부터", needs:"없음",
    desc:"네이버 원고에 '✅ 네이버 발행함' 버튼을 달고, 정해진 시각까지 안 누르면 알려줘요. 주간 리포트에 발행 수도 집계해요.",
    opts:[{k:"remind_at", label:"미발행 알림 시각", type:"time"}]},
@@ -326,6 +328,7 @@ const CONFIG_SECTIONS = [
     {p:"formats.series_labels.explainer", label:"시리즈명 · 뉴스 해설", type:"text"},
     {p:"formats.series_labels.spotlight", label:"시리즈명 · 툴 소개", type:"text"},
     {p:"formats.series_labels.roundup", label:"시리즈명 · 모음", type:"text"},
+    {p:"formats.series_labels.toon", label:"시리즈명 · 칼퇴툰", type:"text"},
     {p:"tistory.thumbnail_label", label:"블로그 대표 이미지 상단 문구", type:"text"},
   ]],
   ["design","카드·릴스","카드뉴스 디자인과 릴스 읽어주기 음성",[
